@@ -51,6 +51,7 @@ private:
 	std::set<const Planet *> planets;
 	// It must have at least one attribute from each set in this list:
 	std::list<std::set<std::string>> attributes;
+	
 	// The system must satisfy these conditions:
 	std::set<const System *> systems;
 	std::set<const Government *> governments;
