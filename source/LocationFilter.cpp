@@ -32,6 +32,7 @@ namespace {
 		// through both of them in sorted order.
 		auto ait = a.begin();
 		auto bit = b.begin();
+		std::string attribute = "";
 		while(ait != a.end() && bit != b.end())
 		{
 			bool wantsMatch = ait->c_str()[0] != '!';
@@ -108,7 +109,7 @@ void LocationFilter::Load(const DataNode &node)
 				if(child.Token(i).c_str()[0] == '!')
 					governmentsBlacklist.insert(GameData::Governments().Get(child.Token(i).substr(1, child.Token(i).length() - 1)));
 				else
-					governments.insert(GameData::Governments().Get(child.Token(i)));
+					governments.insert(GameData::Governments().Get(child.Token(i)));				
 			}
 			for(const DataNode &grand : child)
 				for(int i = 0; i < grand.Size(); ++i)
@@ -116,7 +117,7 @@ void LocationFilter::Load(const DataNode &node)
 					if(grand.Token(i).c_str()[0] == '!')
 						governmentsBlacklist.insert(GameData::Governments().Get(grand.Token(i).substr(1, grand.Token(i).length() - 1)));
 					else
-						governments.insert(GameData::Governments().Get(grand.Token(i)));
+						governments.insert(GameData::Governments().Get(grand.Token(i)));					
 				}
 		}
 		else if(child.Token(0) == "attributes")
@@ -228,9 +229,9 @@ bool LocationFilter::Matches(const Planet *planet, const System *origin) const
 	
 	if(!planets.empty() && !planets.count(planet))
 		return false;
-	for(const set<string> &attr : attributes)
-		if(!SetsIntersect(attr, planet->Attributes()))
-			return false;
+		for(const set<string> &attr : attributes)
+			if(!SetsIntersect(attr, planet->Attributes()))
+				return false;
 	
 	return Matches(planet->GetSystem(), origin);
 }
