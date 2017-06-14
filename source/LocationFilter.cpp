@@ -214,8 +214,8 @@ void LocationFilter::Save(DataWriter &out) const
 // Check if this filter contains any specifications.
 bool LocationFilter::IsEmpty() const
 {
-	return planets.empty() && attributes.empty() && systems.empty() && governments.empty() && governmentsBlacklist.empty()
-		&& !center && originMaxDistance < 0;
+	return planets.empty() && attributes.empty() && systems.empty() && governments.empty()
+		&& !center && (originMaxDistance < 0) && governmentsBlacklist.empty();
 }
 
 
