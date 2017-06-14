@@ -32,6 +32,7 @@ namespace {
 		// through both of them in sorted order.
 		auto ait = a.begin();
 		auto bit = b.begin();
+		std::string attribute = "";
 		while(ait != a.end() && bit != b.end())
 		{
 			bool wantsMatch = ait->c_str()[0] != '!';
