@@ -27,6 +27,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Planet.h"
 #include "PlayerInfo.h"
 #include "PointerShader.h"
+#include "Point.h"
 #include "Preferences.h"
 #include "RingShader.h"
 #include "Screen.h"
@@ -56,7 +57,7 @@ MissionPanel::MissionPanel(PlayerInfo &player)
 {
 	while(acceptedIt != accepted.end() && !acceptedIt->IsVisible())
 		++acceptedIt;
-	
+
 	wrap.SetWrapWidth(380);
 	wrap.SetFont(FontSet::Get(14));
 	wrap.SetAlignment(WrappedText::JUSTIFIED);
@@ -94,10 +95,10 @@ MissionPanel::MissionPanel(const MapPanel &panel)
 {
 	// In this view, always color systems based on player reputation.
 	commodity = SHOW_REPUTATION;
-	
+
 	while(acceptedIt != accepted.end() && !acceptedIt->IsVisible())
 		++acceptedIt;
-	
+
 	wrap.SetWrapWidth(380);
 	wrap.SetFont(FontSet::Get(14));
 	wrap.SetAlignment(WrappedText::JUSTIFIED);
@@ -127,40 +128,46 @@ void MissionPanel::Step()
 void MissionPanel::Draw()
 {
 	MapPanel::Draw();
-	
+
 	Color routeColor(.2, .1, 0., 0.);
 	const System *system = selectedSystem;
 	while(distance.Days(system) > 0)
 	{
 		const System *next = distance.Route(system);
-		
+
 		Point from = Zoom() * (next->Position() + center);
 		Point to = Zoom() * (system->Position() + center);
 		Point unit = (from - to).Unit() * 7.;
 		from -= unit;
 		to += unit;
-		
+
 		LineShader::Draw(from, to, 5., routeColor);
-		
+
 		system = next;
 	}
-	
+
 	DrawKey();
 	DrawSelectedSystem();
-	Point pos = DrawPanel(
-		Screen::TopLeft() + Point(0., -availableScroll),
-		"Missions available here:",
-		available.size());
-	DrawList(available, pos);
-	
-	pos = DrawPanel(
-		Screen::TopRight() + Point(-SIDE_WIDTH, -acceptedScroll),
-		"Your current missions:",
-		AcceptedVisible());
-	DrawList(accepted, pos);
-	
+	Point pos = Point(0, 0);
+	if(!available.empty())
+	{
+		pos = DrawPanel(
+			Screen::TopLeft() + Point(0., -availableScroll),
+			"Missions available here:",
+			available.size());
+		DrawList(available, pos);		
+	}
+	if(AcceptedVisible() > 0)
+	{
+		pos = DrawPanel(
+			Screen::TopRight() + Point(-SIDE_WIDTH, -acceptedScroll),
+			"Your current missions:",
+			AcceptedVisible());
+		DrawList(accepted, pos);
+	}
+
 	DrawMissionInfo();
-	
+
 	const Set<Color> &colors = GameData::Colors();
 	const Color &availableColor = *colors.Get("available back");
 	const Color &unavailableColor = *colors.Get("unavailable back");
@@ -170,7 +177,7 @@ void MissionPanel::Draw()
 		DrawMissionSystem(*availableIt, CanAccept() ? availableColor : unavailableColor);
 	if(acceptedIt != accepted.end() && acceptedIt->Destination())
 		DrawMissionSystem(*acceptedIt, IsSatisfied(*acceptedIt) ? currentColor : blockedColor);
-	
+
 	DrawButtons("is missions");
 }
 
@@ -240,14 +247,14 @@ bool MissionPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 	}
 	else
 		return MapPanel::KeyDown(key, mod, command);
-	
+
 	if(availableIt != available.end())
 		selectedSystem = availableIt->Destination()->GetSystem();
 	else if(acceptedIt != accepted.end())
 		selectedSystem = acceptedIt->Destination()->GetSystem();
 	if(selectedSystem)
 		center = Point(0., -80.) - selectedSystem->Position();
-	
+
 	return true;
 }
 
@@ -256,10 +263,10 @@ bool MissionPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 bool MissionPanel::Click(int x, int y, int clicks)
 {
 	dragSide = 0;
-	
+
 	if(x > Screen::Right() - 80 && y > Screen::Bottom() - 50)
 		return DoKey('p');
-	
+
 	if(x < Screen::Left() + SIDE_WIDTH)
 	{
 		unsigned index = max(0, (y + static_cast<int>(availableScroll) - 36 - Screen::Top()) / 20);
@@ -271,6 +278,8 @@ bool MissionPanel::Click(int x, int y, int clicks)
 			acceptedIt = accepted.end();
 			dragSide = -1;
 			selectedSystem = availableIt->Destination()->GetSystem();
+			if(clicks > 1)
+                DoKey('a');
 			center = Point(0., -80.) - selectedSystem->Position();
 			return true;
 		}
@@ -293,7 +302,7 @@ bool MissionPanel::Click(int x, int y, int clicks)
 			return true;
 		}
 	}
-	
+
 	// Figure out if a system was clicked on.
 	Point click = Point(x, y) / Zoom() - center;
 	const System *system = nullptr;
@@ -343,7 +352,7 @@ bool MissionPanel::Click(int x, int y, int clicks)
 			}
 			if(acceptedIt != accepted.end() && !acceptedIt->IsVisible())
 				continue;
-			
+
 			if(availableIt != available.end() && availableIt->Destination()->IsInSystem(system))
 				break;
 			if(acceptedIt != accepted.end() && acceptedIt->Destination()->IsInSystem(system))
@@ -353,8 +362,10 @@ bool MissionPanel::Click(int x, int y, int clicks)
 		// no other missions in this system.
 		if(acceptedIt != accepted.end() && !acceptedIt->IsVisible())
 			acceptedIt = accepted.end();
+		if(clicks > 1)
+			DoKey('a');
 	}
-	
+
 	return true;
 }
 
@@ -376,7 +387,7 @@ bool MissionPanel::Drag(double dx, double dy)
 	}
 	else
 		MapPanel::Drag(dx, dy);
-	
+
 	return true;
 }
 
@@ -405,7 +416,7 @@ bool MissionPanel::Scroll(double dx, double dy)
 {
 	if(dragSide)
 		return Drag(0., dy * Preferences::ScrollSpeed());
-	
+
 	return MapPanel::Scroll(dx, dy);
 }
 
@@ -415,12 +426,12 @@ void MissionPanel::DrawKey() const
 {
 	const Sprite *back = SpriteSet::Get("ui/mission key");
 	SpriteShader::Draw(back, Screen::BottomLeft() + .5 * Point(back->Width(), -back->Height()));
-	
+
 	Color bright(.6, .6);
 	Color dim(.3, .3);
 	const Font &font = FontSet::Get(14);
 	Point angle = Point(1., 1.).Unit();
-	
+
 	Point pos(Screen::Left() + 10., Screen::Bottom() - 5. * 20. + 5.);
 	Point pointerOff(5., 5.);
 	Point textOff(8., -.5 * font.Height());
@@ -445,7 +456,7 @@ void MissionPanel::DrawKey() const
 		selected = 0 + !CanAccept();
 	if(acceptedIt != accepted.end() && acceptedIt->Destination())
 		selected = 2 + !IsSatisfied(*acceptedIt);
-	
+
 	for(int i = 0; i < 5; ++i)
 	{
 		PointerShader::Draw(pos + pointerOff, angle, 10., 18., 0., COLOR[i]);
@@ -460,7 +471,7 @@ void MissionPanel::DrawSelectedSystem() const
 {
 	const Sprite *sprite = SpriteSet::Get("ui/selected system");
 	SpriteShader::Draw(sprite, Point(0., Screen::Top() + .5 * sprite->Height()));
-	
+
 	string text;
 	if(!selectedSystem)
 		text = "Selected system: none";
@@ -468,7 +479,7 @@ void MissionPanel::DrawSelectedSystem() const
 		text = "Selected system: unexplored system";
 	else
 		text = "Selected system: " + selectedSystem->Name();
-	
+
 	int jumps = 0;
 	const vector<const System *> &plan = player.TravelPlan();
 	auto it = find(plan.begin(), plan.end(), selectedSystem);
@@ -476,12 +487,12 @@ void MissionPanel::DrawSelectedSystem() const
 		jumps = plan.end() - it;
 	else if(distance.HasRoute(selectedSystem))
 		jumps = distance.Days(selectedSystem);
-	
+
 	if(jumps == 1)
 		text += " (1 jump away)";
 	else if(jumps > 0)
 		text += " (" + to_string(jumps) + " jumps away)";
-	
+
 	const Font &font = FontSet::Get(14);
 	Point pos(-.5 * font.Width(text), Screen::Top() + .5 * (30. - font.Height()));
 	font.Draw(text, pos, *GameData::Colors().Get("bright"));
@@ -492,7 +503,7 @@ void MissionPanel::DrawSelectedSystem() const
 void MissionPanel::DrawMissionSystem(const Mission &mission, const Color &color) const
 {
 	const Color &waypointColor = *GameData::Colors().Get("waypoint back");
-	
+
 	Point pos = Zoom() * (mission.Destination()->GetSystem()->Position() + center);
 	RingShader::Draw(pos, 22., 20.5, color);
 	for(const System *system : mission.Waypoints())
@@ -509,17 +520,17 @@ Point MissionPanel::DrawPanel(Point pos, const string &label, int entries) const
 	Color back(.125, 1.);
 	Color unselected = *GameData::Colors().Get("medium");
 	Color selected = *GameData::Colors().Get("bright");
-	
+
 	// Draw the panel.
 	Point size(SIDE_WIDTH, 20 * entries + 40);
 	FillShader::Fill(pos + .5 * size, size, back);
-	
+
 	// Edges:
 	const Sprite *bottom = SpriteSet::Get("ui/bottom edge");
 	Point edgePos = pos + Point(.5 * size.X(), size.Y());
 	Point bottomOff(0., .5 * bottom->Height());
 	SpriteShader::Draw(bottom, edgePos + bottomOff);
-	
+
 	const Sprite *left = SpriteSet::Get("ui/left edge");
 	const Sprite *right = SpriteSet::Get("ui/right edge");
 	double dy = .5 * left->Height();
@@ -532,7 +543,7 @@ Point MissionPanel::DrawPanel(Point pos, const string &label, int entries) const
 		SpriteShader::Draw(right, edgePos + rightOff);
 		edgePos.Y() -= dy;
 	}
-	
+
 	pos += Point(10., 10. + (20. - font.Height()) * .5);
 	font.Draw(label, pos, selected);
 	FillShader::Fill(
@@ -540,7 +551,7 @@ Point MissionPanel::DrawPanel(Point pos, const string &label, int entries) const
 		Point(size.X() - 10., 1.),
 		unselected);
 	pos.Y() += 5.;
-	
+
 	return pos;
 }
 
@@ -553,26 +564,26 @@ Point MissionPanel::DrawList(const list<Mission> &list, Point pos) const
 	Color unselected = *GameData::Colors().Get("medium");
 	Color selected = *GameData::Colors().Get("bright");
 	Color dim = *GameData::Colors().Get("dim");
-	
+
 	for(auto it = list.begin(); it != list.end(); ++it)
 	{
 		if(!it->IsVisible())
 			continue;
-		
+
 		pos.Y() += 20.;
-		
+
 		bool isSelected = (it == availableIt || it == acceptedIt);
 		if(isSelected)
 			FillShader::Fill(
 				pos + Point(.5 * SIDE_WIDTH - 5., 8.),
 				Point(SIDE_WIDTH - 10., 20.),
 				highlight);
-		
+
 		bool canAccept = (&list == &available ? it->HasSpace(player) : IsSatisfied(*it));
 		font.Draw(it->Name(), pos,
 			(!canAccept ? dim : isSelected ? selected : unselected));
 	}
-	
+
 	return pos;
 }
 
@@ -581,22 +592,22 @@ Point MissionPanel::DrawList(const list<Mission> &list, Point pos) const
 void MissionPanel::DrawMissionInfo()
 {
 	Information info;
-	
+
 	// The "accept / abort" button text and activation depends on what mission,
 	// if any, is selected, and whether missions are available.
 	if(CanAccept())
 		info.SetCondition("can accept");
 	else if(acceptedIt != accepted.end())
 		info.SetCondition("can abort");
-	
+
 	info.SetString("cargo free", to_string(player.Cargo().Free()) + " tons");
 	info.SetString("bunks free", to_string(player.Cargo().Bunks()) + " bunks");
-	
+
 	info.SetString("today", player.GetDate().ToString());
-	
+
 	const Interface *interface = GameData::Interfaces().Get("mission");
 	interface->Draw(info, this);
-	
+
 	// If a mission is selected, draw its descriptive text.
 	if(availableIt != available.end())
 		wrap.Wrap(availableIt->Description());
@@ -613,7 +624,7 @@ bool MissionPanel::CanAccept() const
 {
 	if(availableIt == available.end())
 		return false;
-	
+
 	return availableIt->HasSpace(player);
 }
 
@@ -643,12 +654,12 @@ void MissionPanel::Accept()
 		GetUI()->Push(new Dialog(this, &MissionPanel::MakeSpaceAndAccept, out.str()));
 		return;
 	}
-	
+
 	++availableIt;
 	player.AcceptJob(toAccept, GetUI());
 	if(availableIt == available.end() && !available.empty())
 		--availableIt;
-	
+
 	// Check if any other jobs are available with the same destination. Prefer
 	// jobs that also have the same destination planet.
 	if(toAccept.Destination())
@@ -672,24 +683,24 @@ void MissionPanel::MakeSpaceAndAccept()
 	const Mission &toAccept = *availableIt;
 	int cargoToSell = toAccept.CargoSize() - player.Cargo().Free();
 	int crewToFire = toAccept.Passengers() - player.Cargo().Bunks();
-	
+
 	if(crewToFire > 0)
 		player.Flagship()->AddCrew(-crewToFire);
-	
+
 	for(const auto &it : player.Cargo().Commodities())
 	{
 		if(cargoToSell <= 0)
 			break;
-		
+
 		int toSell = min(cargoToSell, it.second);
 		int64_t price = player.GetSystem()->Trade(it.first);
-		
+
 		int64_t basis = player.GetBasis(it.first, toSell);
 		player.AdjustBasis(it.first, -basis);
 		player.Cargo().Remove(it.first, toSell);
 		player.Accounts().AddCredits(toSell * price);
 	}
-	
+
 	player.UpdateCargoCapacities();
 	Accept();
 }
@@ -711,7 +722,7 @@ void MissionPanel::AbortMission()
 }
 
 
-	
+
 int MissionPanel::AcceptedVisible() const
 {
 	int count = 0;

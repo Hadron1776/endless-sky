@@ -36,10 +36,10 @@ class Point;
 class OutfitterPanel : public ShopPanel {
 public:
 	explicit OutfitterPanel(PlayerInfo &player);
-	
+
 	virtual void Step() override;
-	
-	
+
+
 protected:
 	virtual int TileSize() const override;
 	virtual int DrawPlayerShipInfo(const Point &point) override;
@@ -55,9 +55,8 @@ protected:
 	virtual void Sell() override;
 	virtual void FailSell() const override;
 	virtual bool FlightCheck() override;
-	virtual void DrawKey();
-	
-	
+
+
 private:
 	static bool ShipCanBuy(const Ship *ship, const Outfit *outfit);
 	static bool ShipCanSell(const Ship *ship, const Outfit *outfit);
@@ -68,18 +67,12 @@ private:
 	std::string LicenseName(const std::string &name) const;
 	void CheckRefill();
 	void Refill();
-	
-	
+
+
 private:
 	// Record whether we've checked if the player needs ammo refilled.
 	bool checkedRefill = false;
-	// Allow toggling whether outfits that are for sale are shown. If turned
-	// off, only outfits in the currently selected ships are shown.
-	bool showForSale = true;
-	// Remember what ships are selected if the player switches to cargo.
-	Ship *previousShip = nullptr;
-	std::set<Ship *> previousShips;
-	
+
 	Sale<Outfit> outfitter;
 };
 
