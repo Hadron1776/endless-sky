@@ -87,7 +87,7 @@ void Politics::Offend(const Government *gov, int eventType, int count)
 	{
 		const Government *other = &it.second;
 		double weight = other->AttitudeToward(gov);
-		
+
 		// You can provoke a government even by attacking an empty ship, such as
 		// a drone (count = 0, because count = crew).
 		if(eventType & ShipEvent::PROVOKE)
@@ -156,7 +156,7 @@ bool Politics::CanLand(const Planet *planet) const
 		return true;
 	if(provoked.count(planet->GetGovernment()))
 		return false;
-	
+
 	return Reputation(planet->GetGovernment()) >= planet->RequiredReputation();
 }
 
@@ -211,6 +211,7 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 	if(fined.count(gov) || Random::Real() > security || !gov->GetFineFraction())
 		return "";
 	
+	
 	string reason;
 	int64_t maxFine = 0;
 	for(const shared_ptr<Ship> &ship : player.Ships())
@@ -222,6 +223,11 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 			continue;
 		if(ship->GetSystem() != player.GetSystem())
 			continue;
+		for(const Mission &mission : player.Missions())
+		{
+			if(mission.IllegalCargoMessage().empty() && ship->GetPlanet() == mission.Destination() && !ship->IsParked())
+				return "";
+		}
 		
 		if(!scan || (scan & ShipEvent::SCAN_CARGO))
 		{
@@ -230,7 +236,7 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 			{
 				maxFine = fine;
 				reason = " for carrying illegal cargo.";
-
+				
 				for(const Mission &mission : player.Missions())
 				{
 					// Append the illegalCargoMessage from each applicable mission, if available
@@ -248,16 +254,26 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 		}
 		if(!scan || (scan & ShipEvent::SCAN_OUTFITS))
 		{
+			int64_t fine = 0;
 			for(const auto &it : ship->Outfits())
 				if(it.second)
 				{
-					int64_t fine = it.first->Get("illegal");
-					if(it.first->Get("atrocity") > 0.)
+					if(it.first->Get("atrocity") > 0)
 						fine = -1;
+					else
+					{
+						for(int i = 1; i <= it.second; i++)
+							if(Random::Real() <= (1. / (1. + ship->Attributes().Get("scan interference"))))
+								fine += it.first->Get("illegal");
+					}
 					if((fine > maxFine && maxFine >= 0) || fine < 0)
 					{
 						maxFine = fine;
-						reason = " for having illegal outfits installed on your ship.";
+						if(fine < 0)
+							reason = "";
+						else
+							reason = " ";
+						reason += "for having illegal outfits installed on your ship.";
 					}
 				}
 		}
