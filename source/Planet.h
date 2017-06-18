@@ -54,6 +54,7 @@ public:
 	
 	// Get the list of "attributes" of the planet.
 	const std::set<std::string> &Attributes() const;
+	double Get(const std::string &attribute) const;
 	
 	// Get planet's noun descriptor from attributes
 	const std::string &Noun() const;

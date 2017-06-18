@@ -16,6 +16,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Account.h"
 #include "CargoHold.h"
 #include "Date.h"
+#include "DeathTypes.h"
 #include "Depreciation.h"
 #include "GameEvent.h"
 #include "Mission.h"
@@ -30,6 +31,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <vector>
 
 class DataNode;
+class DeathTypes;
 class Government;
 class Outfit;
 class Person;
@@ -79,7 +81,9 @@ public:
 	void AddEvent(const GameEvent &event, const Date &date);
 	
 	// Mark the player as dead, or check if they have died.
-	void Die(bool allShipsDie = false);
+	void Die(int deathType = DeathTypes::None, bool allShipsDie = false);
+	int GetDeathType();
+	std::string GetDeathString(int deathType);
 	bool IsDead() const;
 	
 	// Get or set the player's name.
@@ -259,7 +263,6 @@ private:
 	const Planet *planet = nullptr;
 	bool shouldLaunch = false;
 	bool hasFullClearance = true;
-	bool isDead = false;
 	
 	Account accounts;
 	
@@ -292,6 +295,7 @@ private:
 	const Outfit *selectedWeapon = nullptr;
 	
 	std::map<const Outfit *, int> stock;
+	int DeathType = DeathTypes::None;
 	Depreciation depreciation;
 	Depreciation stockDepreciation;
 	std::set<std::pair<const System *, const Outfit *>> harvested;

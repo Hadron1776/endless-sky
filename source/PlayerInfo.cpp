@@ -297,7 +297,7 @@ void PlayerInfo::LoadRecent()
 void PlayerInfo::Save() const
 {
 	// Don't save dead players.
-	if(isDead)
+	if(DeathType != DeathTypes::None)
 		return;
 	
 	// Remember that this was the most recently saved player.
@@ -462,19 +462,63 @@ void PlayerInfo::AddEvent(const GameEvent &event, const Date &date)
 
 
 // Mark this player as dead.
-void PlayerInfo::Die(bool allShipsDie)
+void PlayerInfo::Die(int deathType, bool allShipsDie)
 {
-	isDead = true;
+	DeathType = deathType;
 	if(allShipsDie)
 		ships.clear();
 }
 
+int PlayerInfo::GetDeathType()
+{
+	return DeathType;
+}
 
 
+
+string PlayerInfo::GetDeathString(int deathType)
+{
+	switch(deathType)
+	{
+	case DeathTypes::None:
+		{
+			return "You have not died.";
+		}
+	case DeathTypes::Damage:
+		{
+			return "You were destroyed by hostile weapons fire.";
+		}
+	case DeathTypes::Captured:
+		{
+			return "You were killed in an attempt to capture an enemy ship.";
+		}
+	case DeathTypes::Cold:
+		{
+			return "You overdid it on the cooling systems and slowly froze to death on your still-intact starship.";
+		}
+	case DeathTypes::Overheating:
+		{
+			return "Your ship was destroyed when emergency thermal shutdown wasn't sufficient to prevent a cascade reactor meltdown.";
+		}
+	case DeathTypes::Imprisoned:
+		{
+			return "You were sentenced to life imprisonment for committing an atrocity against one or more governments.";
+		}
+	case DeathTypes::Mission:
+		{
+			return "You were killed on a mission.";
+		}
+	default:
+		return "You have died.";
+	}
+}
+
+
+// Get the associated string 
 // Query whether this player is dead.
 bool PlayerInfo::IsDead() const
 {
-	return isDead;
+	return DeathType != DeathTypes::None;
 }
 
 
@@ -1055,7 +1099,7 @@ void PlayerInfo::Land(UI *ui)
 					" Your days of traveling the stars have come to an end.";
 				ui->Push(new Dialog(message));
 			}
-			Die();
+			Die(DeathTypes::Imprisoned);
 		}
 		else
 			ui->Push(new Dialog(message));
@@ -1490,7 +1534,7 @@ void PlayerInfo::MissionCallback(int response)
 		missionList.pop_front();
 	}
 	else if(response == Conversation::DIE)
-		Die(true);
+		Die(DeathTypes::Mission, true);
 }
 
 
@@ -1548,7 +1592,13 @@ void PlayerInfo::HandleEvent(const ShipEvent &event, UI *ui)
 	
 	// If the player's flagship was destroyed, the player is dead.
 	if((event.Type() & ShipEvent::DESTROY) && !ships.empty() && event.Target().get() == Flagship())
-		Die();
+	{
+		if(Flagship()->HeatAbsolute() > 250 * Flagship()->Mass())
+			Die(DeathTypes::Overheating);
+		else
+			Die(DeathTypes::Damage);
+	}
+		
 }
 
 
