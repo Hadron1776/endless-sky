@@ -27,6 +27,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Planet.h"
 #include "PlayerInfo.h"
 #include "PointerShader.h"
+#include "Point.h"
 #include "Preferences.h"
 #include "RingShader.h"
 #include "Screen.h"
@@ -147,18 +148,24 @@ void MissionPanel::Draw()
 	
 	DrawKey();
 	DrawSelectedSystem();
-	Point pos = DrawPanel(
-		Screen::TopLeft() + Point(0., -availableScroll),
-		"Missions available here:",
-		available.size());
-	DrawList(available, pos);
-	
-	pos = DrawPanel(
-		Screen::TopRight() + Point(-SIDE_WIDTH, -acceptedScroll),
-		"Your current missions:",
-		AcceptedVisible());
-	DrawList(accepted, pos);
-	
+	Point pos = Point(0, 0);
+	if(!available.empty())
+	{
+		pos = DrawPanel(
+			Screen::TopLeft() + Point(0., -availableScroll),
+			"Missions available here:",
+			available.size());
+		DrawList(available, pos);		
+	}
+	if(AcceptedVisible() > 0)
+	{
+		pos = DrawPanel(
+			Screen::TopRight() + Point(-SIDE_WIDTH, -acceptedScroll),
+			"Your current missions:",
+			AcceptedVisible());
+		DrawList(accepted, pos);
+	}
+
 	DrawMissionInfo();
 	
 	const Set<Color> &colors = GameData::Colors();
@@ -271,6 +278,8 @@ bool MissionPanel::Click(int x, int y, int clicks)
 			acceptedIt = accepted.end();
 			dragSide = -1;
 			selectedSystem = availableIt->Destination()->GetSystem();
+			if(clicks > 1)
+				DoKey('a');
 			center = Point(0., -80.) - selectedSystem->Position();
 			return true;
 		}
@@ -353,6 +362,8 @@ bool MissionPanel::Click(int x, int y, int clicks)
 		// no other missions in this system.
 		if(acceptedIt != accepted.end() && !acceptedIt->IsVisible())
 			acceptedIt = accepted.end();
+		if(clicks > 1)
+			DoKey('a');
 	}
 	
 	return true;
@@ -567,7 +578,7 @@ Point MissionPanel::DrawList(const list<Mission> &list, Point pos) const
 				pos + Point(.5 * SIDE_WIDTH - 5., 8.),
 				Point(SIDE_WIDTH - 10., 20.),
 				highlight);
-		
+	
 		bool canAccept = (&list == &available ? it->HasSpace(player) : IsSatisfied(*it));
 		font.Draw(it->Name(), pos,
 			(!canAccept ? dim : isSelected ? selected : unselected));
