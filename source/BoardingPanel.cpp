@@ -13,6 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "BoardingPanel.h"
 
 #include "CargoHold.h"
+#include "DeathTypes.h"
 #include "Depreciation.h"
 #include "Dialog.h"
 #include "FillShader.h"
@@ -226,7 +227,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 	{
 		// When closing the panel, mark the player dead if their ship was captured.
 		if(playerDied)
-			player.Die(true);
+			player.Die(DeathTypes::Captured, true);
 		GetUI()->Pop(this);
 	}
 	else if(playerDied)
@@ -384,6 +385,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 			else if(!victim->Crew())
 			{
 				messages.push_back("You have succeeded in capturing this ship.");
+				victim->GetGovernment()->Offend(ShipEvent::CAPTURE, victim->RequiredCrew());
 				victim->WasCaptured(you);
 				if(!victim->JumpsRemaining() && you->CanRefuel(*victim))
 					you->TransferFuel(victim->JumpFuelMissing(), &*victim);
