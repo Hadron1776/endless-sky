@@ -217,8 +217,6 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 	{
 		// Check if the ship evades being scanned due to interference plating.
 		double scanResistance = 1. / (1. + ship->Attributes().Get("scan interference"));
-		if((Random::Real() > scanResistance) && (scan & ShipEvent::SCAN_CARGO))
-			continue;
 		if(target && target != &*ship)
 			continue;
 		if(ship->GetSystem() != player.GetSystem())
@@ -226,24 +224,27 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 		
 		if(!scan || (scan & ShipEvent::SCAN_CARGO))
 		{
-			int64_t fine = ship->Cargo().IllegalCargoFine();
-			if((fine > maxFine && maxFine >= 0) || fine < 0)
+			if(Random::Real() <= scanResistance)
 			{
-				maxFine = fine;
-				reason = " for carrying illegal cargo.";
-
-				for(const Mission &mission : player.Missions())
+				int64_t fine = ship->Cargo().IllegalCargoFine();
+				if((fine > maxFine && maxFine >= 0) || fine < 0)
 				{
-					// Append the illegalCargoMessage from each applicable mission, if available
-					string illegalCargoMessage = mission.IllegalCargoMessage();
-					if(!illegalCargoMessage.empty())
+					maxFine = fine;
+					reason = " for carrying illegal cargo.";
+
+					for(const Mission &mission : player.Missions())
 					{
-						reason = ".\n\t";
-						reason.append(illegalCargoMessage);
+						// Append the illegalCargoMessage from each applicable mission, if available
+						string illegalCargoMessage = mission.IllegalCargoMessage();
+						if(!illegalCargoMessage.empty())
+						{
+							reason = ".\n\t";
+							reason.append(illegalCargoMessage);
+						}
+						// Fail any missions with illegal cargo and "Stealth" set
+						if(mission.IllegalCargoFine() > 0 && mission.FailIfDiscovered())
+							player.FailMission(mission);
 					}
-					// Fail any missions with illegal cargo and "Stealth" set
-					if(mission.IllegalCargoFine() > 0 && mission.FailIfDiscovered())
-						player.FailMission(mission);
 				}
 			}
 		}
