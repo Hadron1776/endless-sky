@@ -109,7 +109,7 @@ void Politics::Offend(const Government *gov, int eventType, int count)
 			double penalty = (count * weight) * other->PenaltyFor(eventType);
 			if(eventType & ShipEvent::ATROCITY)
 				reputationWith[other] = min(0., reputationWith[other]);
-			
+				
 			reputationWith[other] -= penalty;
 		}
 	}
@@ -250,10 +250,11 @@ string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const
 		if(!scan || (scan & ShipEvent::SCAN_OUTFITS))
 		{
 			int64_t fine = 0;
+			
 			for(const auto &it : ship->Outfits())
 				if(it.second)
 				{
-					if(it.first->Get("atrocity") > 0)
+					if(it.first->Get("atrocity") > 0.)
 						fine = -1;
 					else
 					{
