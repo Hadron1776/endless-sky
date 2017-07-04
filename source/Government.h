@@ -48,6 +48,7 @@ public:
 	int GetSwizzle() const;
 	// Get the color to use for displaying this government on the map.
 	const Color &GetColor() const;
+	bool IsKnown() const;
 	
 	// Get the government's initial disposition toward other governments or
 	// toward the player.
@@ -102,6 +103,10 @@ public:
 	void AddReputation(double value) const;
 	void SetReputation(double value) const;
 	
+	// Get the government's crew attack/defense values
+	int64_t CrewAttack() const;
+	int64_t CrewDefense() const;
+	
 	
 private:
 	unsigned id;
@@ -121,6 +126,8 @@ private:
 	const Phrase *hostileDisabledHail = nullptr;
 	std::string language;
 	const Fleet *raidFleet = nullptr;
+	int64_t crewAttack = 1;
+	int64_t crewDefense = 2;
 };
 
 
