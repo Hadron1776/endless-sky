@@ -61,6 +61,8 @@ void NPC::Load(const DataNode &node)
 	
 	for(const DataNode &child : node)
 	{
+		bool addPersonality = (child.Token(0) == "add" && child.Token(1) == "personality");
+		bool removePersonality = (child.Token(0) == "remove" && child.Token(1) == "personality");
 		if(child.Token(0) == "system")
 		{
 			if(child.Size() >= 2)
@@ -83,6 +85,18 @@ void NPC::Load(const DataNode &node)
 			mustAccompany = true;
 		else if(child.Token(0) == "government" && child.Size() >= 2)
 			government = GameData::Governments().Get(child.Token(1));
+		else if(addPersonality)
+		{
+			Personality changes;
+			changes.Load(child);
+			personality += changes;
+		}
+		else if(removePersonality)
+		{
+			Personality changes;
+			changes.Load(child);
+			personality -= changes;
+		}
 		else if(child.Token(0) == "personality")
 			personality.Load(child);
 		else if(child.Token(0) == "dialog")
@@ -320,19 +334,10 @@ bool NPC::IsLeftBehind(const System *playerSystem) const
 
 bool NPC::HasFailed() const
 {
-	static const int mustLiveFor = ShipEvent::SCAN_CARGO | ShipEvent::SCAN_OUTFITS | ShipEvent::BOARD;
-						
 	for(const auto &it : actions)
-	{
 		if(it.second & failIf)
 			return true;
 	
-		// If we still need to perform an action that requires the NPC ship be
-		// alive, then that ship being destroyed should cause the mission to fail.
-		if((~it.second & succeedIf & mustLiveFor) && (it.second & ShipEvent::DESTROY))
-			return true;
-	}
-
 	return false;
 }
 
