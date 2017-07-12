@@ -95,7 +95,7 @@ Personality::Personality()
 Personality &Personality::operator+=(const Personality &rhs)
 {
 	flags |= rhs.flags;
-	confusion = rhs.confusion;
+	confusionMultiplier = rhs.confusionMultiplier;
 	return *this;
 }
 
@@ -104,7 +104,7 @@ Personality &Personality::operator+=(const Personality &rhs)
 Personality &Personality::operator-=(const Personality &rhs)
 {
 	flags &= ~(rhs.flags);
-	confusion = rhs.confusion;
+	confusionMultiplier = rhs.confusionMultiplier;
 	return *this;
 }
 
