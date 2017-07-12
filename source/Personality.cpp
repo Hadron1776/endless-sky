@@ -357,3 +357,19 @@ void Personality::Parse(const string &token)
 	if(it != TOKEN.end())
 		flags |= it->second;
 }
+
+
+
+Personality &Personality::operator+=(const Personality &rhs)
+{
+	this->flags |= rhs.flags;
+	return *this;
+}
+
+
+
+Personality &Personality::operator-=(const Personality &rhs)
+{
+	this->flags &= ~(rhs.flags);
+	return *this;
+}
