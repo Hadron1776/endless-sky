@@ -66,11 +66,19 @@ void Fleet::Load(const DataNode &node)
 				commodities.push_back(child.Token(i));
 		}
 		else if(addPersonality)
-			personality.Load(child, false, false);
+		{
+			Personality changes;
+			changes.Load(child);
+			personality += changes;
+		}
 		else if(removePersonality)
-			personality.Load(child, false, true);
+		{
+			Personality changes;
+			changes.Load(child);
+			personality -= changes;
+		}
 		else if(key == "personality")
-			personality.Load(child, true, false);
+			personality.Load(child);
 		else if(key == "variant" || add)
 		{
 			if(resetVariants && !add)

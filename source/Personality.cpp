@@ -92,16 +92,11 @@ Personality::Personality()
 
 
 
-void Personality::Load(const DataNode &node, bool reset, bool remove)
+void Personality::Load(const DataNode &node)
 {
-	if(reset)
-		flags = 0;
+	flags = 0;
 	for(int i = 1; i < node.Size(); ++i)
-	{
-		if(node.Token(i) == "personality")
-			continue;
-		Parse(node.Token(i), remove);
-	}
+		Parse(node.Token(i));
 	
 	
 	for(const DataNode &child : node)
@@ -111,11 +106,7 @@ void Personality::Load(const DataNode &node, bool reset, bool remove)
 		else
 		{
 			for(int i = 0; i < child.Size(); ++i)
-			{
-				if(child.Token(i) == "personality")
-					continue;
-				Parse(child.Token(i), remove);
-			}
+				Parse(child.Token(i));
 		}
 	}
 }
@@ -361,14 +352,25 @@ Personality Personality::Defender()
 
 
 
-void Personality::Parse(const string &token, bool remove)
+void Personality::Parse(const string &token)
 {
 	auto it = TOKEN.find(token);
 	if(it != TOKEN.end())
-	{
-		if(remove)
-			flags &= ~it->second;
-		else
-			flags |= it->second;
-	}
+		flags |= it->second;
+}
+
+
+
+Personality &Personality::operator+=(const Personality &rhs)
+{
+	this->flags |= rhs.flags;
+	return *this;
+}
+
+
+
+Personality &Personality::operator-=(const Personality &rhs)
+{
+	this->flags &= ~(rhs.flags);
+	return *this;
 }

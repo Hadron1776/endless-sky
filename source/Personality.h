@@ -31,7 +31,7 @@ class Personality {
 public:
 	Personality();
 	
-	void Load(const DataNode &node, bool reset, bool remove);
+	void Load(const DataNode &node);
 	void Save(DataWriter &out) const;
 	
 	// Who a ship decides to attack:
@@ -68,8 +68,8 @@ public:
 	
 	// Special flags:
 	bool IsEscort() const;
-	bool IsTarget() const;
 	bool IsMute() const;
+	bool IsTarget() const;
 	
 	// Current inaccuracy in this ship's targeting:
 	const Point &Confusion() const;
@@ -78,9 +78,13 @@ public:
 	// Personality to use for ships defending a planet from domination:
 	static Personality Defender();
 	
+	// Operator overloading:
+	Personality &operator+=(const Personality &rhs);
+	Personality &operator-=(const Personality &rhs);
+	
 	
 private:
-	void Parse(const std::string &token, bool remove);
+	void Parse(const std::string &token);
 	
 	
 private:
