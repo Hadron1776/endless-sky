@@ -16,6 +16,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Format.h"
 #include "GameData.h"
 #include "Government.h"
+#include "Phrase.h"
 #include "PlayerInfo.h"
 #include "Politics.h"
 #include "Random.h"
@@ -472,10 +473,17 @@ void Planet::Bribe(bool fullAccess) const
 // Demand tribute, and get the planet's response.
 string Planet::DemandTribute(PlayerInfo &player) const
 {
+	static const Phrase *tributeHail = nullptr;
 	if(player.GetCondition("tribute: " + name))
-		return "We are already paying you as much as we can afford.";
+	{
+		tributeHail = GameData::Phrases().Get("tribute present hail");
+		return tributeHail->Get();
+	}
 	if(!tribute || !defenseFleet || !defenseCount || player.GetCondition("combat rating") < defenseThreshold)
-		return "Please don't joke about that sort of thing.";
+	{
+		tributeHail = GameData::Phrases().Get("tribute denied hail");
+		return tributeHail->Get();
+	}
 	
 	// The player is scary enough for this planet to take notice. Check whether
 	// this is the first demand for tribute, or not.
@@ -484,7 +492,8 @@ string Planet::DemandTribute(PlayerInfo &player) const
 		isDefending = true;
 		GameData::GetPolitics().Offend(defenseFleet->GetGovernment(), ShipEvent::PROVOKE);
 		GameData::GetPolitics().Offend(GetGovernment(), ShipEvent::PROVOKE);
-		return "Our defense fleet will make short work of you.";
+		tributeHail = GameData::Phrases().Get("tribute accepted hail");
+		return tributeHail->Get();
 	}
 	
 	// The player has already demanded tribute. Have they killed off the entire
@@ -498,11 +507,18 @@ string Planet::DemandTribute(PlayerInfo &player) const
 		}
 	
 	if(!isDefeated)
-		return "We're not ready to surrender yet.";
+	{
+		tributeHail = GameData::Phrases().Get("tribute in progress hail");
+		return tributeHail->Get();
+	}
+	
+	map<string, string> subs;
+	subs["<tribute>"] = Format::Number(tribute) + " credits";
+	tributeHail = GameData::Phrases().Get("tribute granted hail");
 	
 	player.Conditions()["tribute: " + name] = tribute;
 	GameData::GetPolitics().DominatePlanet(this);
-	return "We surrender. We will pay you " + Format::Number(tribute) + " credits per day to leave us alone.";
+	return Format::Replace(tributeHail->Get(), subs);
 }
 
 
