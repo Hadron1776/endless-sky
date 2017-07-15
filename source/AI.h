@@ -74,13 +74,13 @@ private:
 	bool CanJump(const Ship &ship) const;
 	static void Refuel(Ship &ship, Command &command);
 	static bool CanRefuel(const Ship &ship, const StellarObject *target);
-	void PrepareForHyperspace(Ship &ship, Command &command) const;
 	
 	static double TurnBackward(const Ship &ship);
 	static double TurnToward(const Ship &ship, const Point &vector);
 	static bool MoveToPlanet(Ship &ship, Command &command);
 	static bool MoveTo(Ship &ship, Command &command, const Point &targetPosition, const Point &targetVelocity, double radius, double slow);
 	static bool Stop(Ship &ship, Command &command, double maxSpeed = 0., const Point direction = Point());
+	static void PrepareForHyperspace(Ship &ship, Command &command);
 	static void CircleAround(Ship &ship, Command &command, const Ship &target);
 	static void Swarm(Ship &ship, Command &command, const Ship &target);
 	static void KeepStation(Ship &ship, Command &command, const Ship &target);
