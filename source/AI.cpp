@@ -1047,7 +1047,7 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 		}
 	}
 	
-	if(ship.GetTargetSystem())
+	if(ship.GetTargetSystem() && CanJump(ship))
 	{
 		PrepareForHyperspace(ship, command);
 		bool mustWait = false;
@@ -1060,6 +1060,11 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 		
 		if(!mustWait)
 			command |= Command::JUMP;
+	}
+	else if(!CanJump(ship))
+	{
+		command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+		command |= Command::FORWARD;
 	}
 	else if(ship.GetTargetStellar())
 	{
@@ -1125,6 +1130,11 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 			MoveToPlanet(ship, command);
 			command |= Command::LAND;
 		}
+		else if(!CanJump(ship))
+		{
+			command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+			command |= Command::FORWARD;
+		}
 		else if(ship.GetTargetSystem())
 		{
 			PrepareForHyperspace(ship, command);
@@ -1147,6 +1157,11 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 		ship.SetTargetSystem(dest);
 		if(!dest || (ship.GetSystem()->HasFuelFor(ship) && !dest->HasFuelFor(ship) && ship.JumpsRemaining() == 1))
 			Refuel(ship, command);
+		else if(!CanJump(ship))
+		{
+			command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+			command |= Command::FORWARD;
+		}
 		else
 		{
 			PrepareForHyperspace(ship, command);
@@ -1156,6 +1171,41 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 	}
 	else
 		KeepStation(ship, command, parent);
+}
+
+
+
+bool AI::CanJump(const Ship &ship) const
+{
+	if(!(ship.Attributes().Get("hyperdrive") || ship.Attributes().Get("jump drive")))
+		return false;
+	if(!ship.JumpFuel(ship.GetTargetSystem()) || !(ship.JumpsRemaining() || ship.IsEnteringHyperspace()))
+		return false;
+		
+	for(const shared_ptr<Ship> it : ships)
+	{
+		Point position = it->Position() - ship.Position();
+		if(it->Attributes().Get("jump interdiction") && &ship != it.get() && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
+			if(abs(position.Length()) <= it->Attributes().Get("jump interdiction"))
+				return false;
+	}
+	return true;
+}
+
+
+
+// Get the direction away from an interdictor that's within range.
+const Point AI::InterdictorVector(const Ship &ship) const
+{
+	Point position = Point();
+	for(const shared_ptr<Ship> it : ships)
+	{
+		position = it->Position() - ship.Position();
+		if(it->Attributes().Get("jump interdiction"))
+			if(position.Length() <= it->Attributes().Get("jump interdiction") && &ship != it.get() && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
+				break;
+	}
+	return -position;
 }
 
 
@@ -1341,12 +1391,14 @@ bool AI::Stop(Ship &ship, Command &command, double maxSpeed, const Point directi
 
 
 
-void AI::PrepareForHyperspace(Ship &ship, Command &command)
+void AI::PrepareForHyperspace(Ship &ship, Command &command) const
 {
 	bool hasHyperdrive = ship.Attributes().Get("hyperdrive");
 	double scramThreshold = ship.Attributes().Get("scram drive");
 	bool hasJumpDrive = ship.Attributes().Get("jump drive");
 	if(!hasHyperdrive && !hasJumpDrive)
+		return;
+	if(!CanJump(ship))
 		return;
 	
 	bool isJump = !hasHyperdrive || !ship.GetSystem()->Links().count(ship.GetTargetSystem());
@@ -1612,11 +1664,16 @@ void AI::DoSurveillance(Ship &ship, Command &command) const
 	bool hyperdrive = ship.Attributes().Get("hyperdrive");
 	
 	// This function is only called for ships that are in the player's system.
-	if(ship.GetTargetSystem())
+	if(ship.GetTargetSystem() && CanJump(ship))
 	{
 		PrepareForHyperspace(ship, command);
 		command |= Command::JUMP;
 		command |= Command::DEPLOY;
+	}
+	else if(!CanJump(ship))
+	{
+		command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+		command |= Command::FORWARD;
 	}
 	else if(ship.GetTargetStellar())
 	{
@@ -2756,35 +2813,19 @@ void AI::MovePlayer(Ship &ship, const PlayerInfo &player)
 			if(keyDown.Has(Command::JUMP) || !keyHeld.Has(Command::JUMP))
 				Audio::Play(Audio::Get("fail"));
 		}
+		else if(!CanJump(ship))
+		{
+			Messages::Add("You cannot make hyperspace jumps while within range of an enemy interdiction field.");
+			keyStuck.Clear();
+			if(keyDown.Has(Command::JUMP) || !keyHeld.Has(Command::JUMP))
+				Audio::Play(Audio::Get("fail"));
+		}
 		else
 		{
-			bool canJump = true;
-			for(const shared_ptr<Ship> it : ships)
-			{
-				Point position = it->Position() - ship.Position();
-				if(it->Attributes().Get("jump interdiction") && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
-				{
-					if(abs(position.Length()) <= abs(it->Attributes().Get("jump interdiction")))
-					{
-						canJump = false;
-						break;
-					}
-				}
-			}
-			if(canJump)
-			{
-				PrepareForHyperspace(ship, command);
-				command |= Command::JUMP;
-				if(keyHeld.Has(Command::JUMP))
-					command |= Command::WAIT;
-			}
-			else
-			{
-				Messages::Add("You cannot make a hyperspace jump while within range of an enemy interdiction field.");
-				keyStuck.Clear();
-				if(keyDown.Has(Command::JUMP) || !keyHeld.Has(Command::JUMP))
-					Audio::Play(Audio::Get("fail"));
-			}
+			PrepareForHyperspace(ship, command);
+			command |= Command::JUMP;
+			if(keyHeld.Has(Command::JUMP))
+				command |= Command::WAIT;
 		}
 	}
 	else if(keyStuck.Has(Command::BOARD))
