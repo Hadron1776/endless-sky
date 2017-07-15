@@ -2758,10 +2758,33 @@ void AI::MovePlayer(Ship &ship, const PlayerInfo &player)
 		}
 		else
 		{
-			PrepareForHyperspace(ship, command);
-			command |= Command::JUMP;
-			if(keyHeld.Has(Command::JUMP))
-				command |= Command::WAIT;
+			bool canJump = true;
+			for(const shared_ptr<Ship> it : ships)
+			{
+				Point position = it->Position() - ship.Position();
+				if(it->Attributes().Get("jump interdiction") && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
+				{
+					if(abs(position.Length()) <= abs(it->Attributes().Get("jump interdiction")))
+					{
+						canJump = false;
+						break;
+					}
+				}
+			}
+			if(canJump)
+			{
+				PrepareForHyperspace(ship, command);
+				command |= Command::JUMP;
+				if(keyHeld.Has(Command::JUMP))
+					command |= Command::WAIT;
+			}
+			else
+			{
+				Messages::Add("You cannot make a hyperspace jump while within range of an enemy interdiction field.");
+				keyStuck.Clear();
+				if(keyDown.Has(Command::JUMP) || !keyHeld.Has(Command::JUMP))
+					Audio::Play(Audio::Get("fail"));
+			}
 		}
 	}
 	else if(keyStuck.Has(Command::BOARD))
