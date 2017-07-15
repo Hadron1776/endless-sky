@@ -1197,6 +1197,7 @@ bool AI::CanJump(const Ship &ship) const
 // Get the direction away from an interdictor that's within range.
 const Point AI::InterdictorVector(const Ship &ship) const
 {
+	// TODO later: Do something about interdictor fleets
 	Point position = Point();
 	for(const shared_ptr<Ship> it : ships)
 	{
@@ -1391,14 +1392,12 @@ bool AI::Stop(Ship &ship, Command &command, double maxSpeed, const Point directi
 
 
 
-void AI::PrepareForHyperspace(Ship &ship, Command &command) const
+void AI::PrepareForHyperspace(Ship &ship, Command &command)
 {
 	bool hasHyperdrive = ship.Attributes().Get("hyperdrive");
 	double scramThreshold = ship.Attributes().Get("scram drive");
 	bool hasJumpDrive = ship.Attributes().Get("jump drive");
 	if(!hasHyperdrive && !hasJumpDrive)
-		return;
-	if(!CanJump(ship))
 		return;
 	
 	bool isJump = !hasHyperdrive || !ship.GetSystem()->Links().count(ship.GetTargetSystem());
@@ -1664,16 +1663,19 @@ void AI::DoSurveillance(Ship &ship, Command &command) const
 	bool hyperdrive = ship.Attributes().Get("hyperdrive");
 	
 	// This function is only called for ships that are in the player's system.
-	if(ship.GetTargetSystem() && CanJump(ship))
+	if(ship.GetTargetSystem())
 	{
-		PrepareForHyperspace(ship, command);
-		command |= Command::JUMP;
-		command |= Command::DEPLOY;
-	}
-	else if(!CanJump(ship))
-	{
-		command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
-		command |= Command::FORWARD;
+		if(CanJump(ship))
+		{
+			PrepareForHyperspace(ship, command);
+			command |= Command::JUMP;
+			command |= Command::DEPLOY;
+		}
+		else
+		{
+			command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+			command |= Command::FORWARD;
+		}
 	}
 	else if(ship.GetTargetStellar())
 	{
