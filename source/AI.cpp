@@ -1184,10 +1184,17 @@ bool AI::CanJump(const Ship &ship) const
 		
 	for(const shared_ptr<Ship> it : ships)
 	{
+		// Skip ships that have been destroyed.
+		if(it->IsDestroyed())
+			continue;
+			
+		double jumpRadius = it->Attributes().Get("jump interdiction");
 		Point position = it->Position() - ship.Position();
-		if(it->Attributes().Get("jump interdiction") && &ship != it.get() && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
-			if(abs(position.Length()) <= it->Attributes().Get("jump interdiction"))
+		if(jumpRadius && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
+		{
+			if(&ship != it.get() && abs(position.Length()) <= jumpRadius)
 				return false;
+		}
 	}
 	return true;
 }
@@ -1201,10 +1208,17 @@ const Point AI::InterdictorVector(const Ship &ship) const
 	Point position = Point();
 	for(const shared_ptr<Ship> it : ships)
 	{
+		// Skip ships that have been destroyed.
+		if(it->IsDestroyed())
+			continue;
+			
+		double jumpRadius = it->Attributes().Get("jump interdiction");
 		position = it->Position() - ship.Position();
-		if(it->Attributes().Get("jump interdiction"))
-			if(position.Length() <= it->Attributes().Get("jump interdiction") && &ship != it.get() && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
+		if(jumpRadius && it->GetGovernment()->IsEnemy(ship.GetGovernment())
+		{
+			if(&ship != it.get() && abs(position.Length()) <= jumpRadius)
 				break;
+		}
 	}
 	return -position;
 }
