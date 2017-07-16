@@ -20,6 +20,8 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <list>
 #include <map>
 #include <memory>
+#include <set>
+#include <vector>
 
 class Angle;
 class AsteroidField;
@@ -70,8 +72,9 @@ private:
 	bool FollowOrders(Ship &ship, Command &command) const;
 	void MoveIndependent(Ship &ship, Command &command) const;
 	void MoveEscort(Ship &ship, Command &command) const;
-	const Point InterdictorVector(const Ship &ship) const;
-	bool CanJump(const Ship &ship) const;
+	bool CanJump(Ship &ship) const;
+	void BuildAuraMaps(const int auraType);
+	Point AuraStrength(const int auraType, const Ship &ship, const bool ifHostile = true) const;
 	static void Refuel(Ship &ship, Command &command);
 	static bool CanRefuel(const Ship &ship, const StellarObject *target);
 	
@@ -95,7 +98,7 @@ private:
 	
 	static Point StoppingPoint(const Ship &ship, const Point &targetVelocity, bool &shouldReverse);
 	// Get a vector giving the direction this ship should aim in in order to do
-	// maximum damaged to a target at the given position with its non-turret,
+	// maximum damage to a target at the given position with its non-turret,
 	// non-homing weapons. If the ship has no non-homing weapons, this just
 	// returns the direction to the target.
 	static Point TargetAim(const Ship &ship);
@@ -135,6 +138,14 @@ private:
 		std::weak_ptr<Ship> target;
 		Point point;
 		const System * targetSystem;
+	};
+	
+	class Auras {
+	public:
+		static const int JUMP_INTERDICTION = 0x000;
+		std::map<const int, std::string> attributes {
+			{0x000, "jump interdiction"}
+		};
 	};
 
 
@@ -182,6 +193,12 @@ private:
 	
 	std::map<const Government *, int64_t> enemyStrength;
 	std::map<const Government *, int64_t> allyStrength;
+	
+	// Aura emitter positions (e.g. ships with "jump interdiction" and the active range).
+	std::map<const int, std::map<const Government *, std::vector<std::pair<const Point, double>>>> auraLocations;
+	// The system(s) in which the auras are active. Currently only the player's system.
+	std::set<const System *> auraSystems;
+	Auras auras;
 };
 
 

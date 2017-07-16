@@ -36,6 +36,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <cmath>
 #include <limits>
 #include <set>
+#include <vector>
 
 using namespace std;
 
@@ -227,6 +228,7 @@ void AI::UpdateEvents(const list<ShipEvent> &events)
 
 
 
+// Called when the player enters a system, either via hyperspace or launching.
 void AI::Clean()
 {
 	actions.clear();
@@ -282,7 +284,16 @@ void AI::Step(const PlayerInfo &player)
 			if(ogov->AttitudeToward(gov) > 0. && oit->Position().Distance(it->Position()) < 2000.)
 				strength += oit->Cost();
 		}
-	}		
+	}
+	// Clear any area-of-effect maps
+	auraSystems.clear();
+	auraSystems.insert(player.GetSystem());
+	for(auto auraType : auraLocations)
+	{
+		for(auto aura : auraType.second)
+			aura.second.clear();
+	}
+	BuildAuraMaps(Auras::JUMP_INTERDICTION);
 	
 	const Ship *flagship = player.Flagship();
 	step = (step + 1) & 31;
@@ -1063,7 +1074,7 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 	}
 	else if(!CanJump(ship))
 	{
-		command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+		command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
 		command |= Command::FORWARD;
 	}
 	else if(ship.GetTargetStellar())
@@ -1132,7 +1143,7 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 		}
 		else if(!CanJump(ship))
 		{
-			command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
 			command |= Command::FORWARD;
 		}
 		else if(ship.GetTargetSystem())
@@ -1159,7 +1170,7 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 			Refuel(ship, command);
 		else if(!CanJump(ship))
 		{
-			command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
 			command |= Command::FORWARD;
 		}
 		else
@@ -1175,52 +1186,70 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 
 
 
-bool AI::CanJump(const Ship &ship) const
+bool AI::CanJump(Ship &ship) const
 {
 	if(!(ship.Attributes().Get("hyperdrive") || ship.Attributes().Get("jump drive")))
 		return false;
 	if(!ship.JumpFuel(ship.GetTargetSystem()) || !(ship.JumpsRemaining() || ship.IsEnteringHyperspace()))
 		return false;
 		
-	for(const shared_ptr<Ship> it : ships)
+	if(auraSystems.count(ship.GetSystem()))
 	{
-		// Skip ships that have been destroyed.
-		if(it->IsDestroyed())
-			continue;
-			
-		double jumpRadius = it->Attributes().Get("jump interdiction");
-		Point position = it->Position() - ship.Position();
-		if(jumpRadius && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
-		{
-			if(&ship != it.get() && abs(position.Length()) <= jumpRadius)
-				return false;
-		}
+		Point interdictionVector = AuraStrength(Auras::JUMP_INTERDICTION, ship, true);
+		return interdictionVector.Length() < 1.;
 	}
+	
 	return true;
 }
 
 
 
-// Get the direction away from an interdictor that's within range.
-const Point AI::InterdictorVector(const Ship &ship) const
+// Build this system's map of aura effects for this step.
+void AI::BuildAuraMaps(const int auraType)
 {
-	// TODO later: Do something about interdictor fleets
-	Point position = Point();
 	for(const shared_ptr<Ship> it : ships)
 	{
-		// Skip ships that have been destroyed.
-		if(it->IsDestroyed())
+		// Skip ships that have been destroyed, disabled, are not in this system, or are not
+		// targetable. Aura mapping should only be done for the player's system, as it is
+		// the only system that gets extensive attention / combat.
+		if(it->IsDestroyed() || it->IsDisabled() || !auraSystems.count(it->GetSystem())
+				|| !it->GetGovernment() || !it->IsTargetable())
 			continue;
-			
-		double jumpRadius = it->Attributes().Get("jump interdiction");
-		position = it->Position() - ship.Position();
-		if(jumpRadius && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
+		
+		double auraRadius = it->Attributes().Get(auras.attributes[auraType]);
+		if(auraRadius)
 		{
-			if(&ship != it.get() && abs(position.Length()) <= jumpRadius)
-				break;
+			pair<const Point, double> auraVector = make_pair(it->Position(), auraRadius);
+			auraLocations[auraType][it->GetGovernment()].emplace_back(auraVector);
 		}
 	}
-	return -position;
+}
+
+
+
+// Calculate the aura strength vector for the ship at a given position. This vector reflects the 
+// relative positions of all auras of type 'auraType' that the ship is affected by. If a ship 
+// travels in the direction of this vector, it will remove itself from any aura that envelop it.
+// The relationship with the aura generator is controlled by 'ifHostile': if false, auras
+// created by allies will be considered instead of auras created by enemies.
+Point AI::AuraStrength(const int auraType, const Ship &ship, const bool ifHostile) const
+{
+	if(!auraSystems.count(ship.GetSystem()) || auraLocations.find(auraType) == auraLocations.end())
+		return Point();
+	
+	Point auraStrength = Point();
+	for(const auto auraGovt : auraLocations.at(auraType))
+		if(auraGovt.first->IsEnemy(ship.GetGovernment()) == ifHostile)
+		{
+			for(const auto emitter : auraGovt.second)
+			{
+				Point fleeVector = ship.Position() - emitter.first;
+				if(fleeVector.Length() < emitter.second)
+					auraStrength += fleeVector * (emitter.second - fleeVector.Length());
+			}
+		}
+	
+	return auraStrength;
 }
 
 
@@ -1687,7 +1716,7 @@ void AI::DoSurveillance(Ship &ship, Command &command) const
 		}
 		else
 		{
-			command.SetTurn(TurnToward(ship, InterdictorVector(ship)));
+			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
 			command |= Command::FORWARD;
 		}
 	}
@@ -2831,7 +2860,7 @@ void AI::MovePlayer(Ship &ship, const PlayerInfo &player)
 		}
 		else if(!CanJump(ship))
 		{
-			Messages::Add("You cannot make hyperspace jumps while within range of an enemy interdiction field.");
+			Messages::Add("You cannot make hyperspace jumps while within range of an enemy interdiction aura.");
 			keyStuck.Clear();
 			if(keyDown.Has(Command::JUMP) || !keyHeld.Has(Command::JUMP))
 				Audio::Play(Audio::Get("fail"));
