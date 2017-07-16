@@ -72,7 +72,7 @@ private:
 	bool FollowOrders(Ship &ship, Command &command) const;
 	void MoveIndependent(Ship &ship, Command &command) const;
 	void MoveEscort(Ship &ship, Command &command) const;
-	bool CanJump(Ship &ship) const;
+	bool JumpBlocked(Ship &ship) const;
 	void BuildAuraMaps(const int auraType);
 	Point AuraStrength(const int auraType, const Ship &ship, const bool ifHostile = true) const;
 	static void Refuel(Ship &ship, Command &command);

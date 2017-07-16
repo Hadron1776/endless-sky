@@ -1058,24 +1058,27 @@ void AI::MoveIndependent(Ship &ship, Command &command) const
 		}
 	}
 	
-	if(ship.GetTargetSystem() && CanJump(ship))
+	if(ship.GetTargetSystem())
 	{
-		PrepareForHyperspace(ship, command);
-		bool mustWait = false;
-		if(ship.BaysFree(false) || ship.BaysFree(true))
-			for(const weak_ptr<const Ship> &escort : ship.GetEscorts())
-			{
-				shared_ptr<const Ship> locked = escort.lock();
-				mustWait |= locked && locked->CanBeCarried() && !locked->IsDisabled();
-			}
-		
-		if(!mustWait)
-			command |= Command::JUMP;
-	}
-	else if(!CanJump(ship))
-	{
-		command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
-		command |= Command::FORWARD;
+		if(JumpBlocked(ship))
+		{
+			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
+			command |= Command::FORWARD;
+		}
+		else
+		{
+			PrepareForHyperspace(ship, command);
+			bool mustWait = false;
+			if(ship.BaysFree(false) || ship.BaysFree(true))
+				for(const weak_ptr<const Ship> &escort : ship.GetEscorts())
+				{
+					shared_ptr<const Ship> locked = escort.lock();
+					mustWait |= locked && locked->CanBeCarried() && !locked->IsDisabled();
+				}
+			
+			if(!mustWait)
+				command |= Command::JUMP;
+		}
 	}
 	else if(ship.GetTargetStellar())
 	{
@@ -1141,15 +1144,18 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 			MoveToPlanet(ship, command);
 			command |= Command::LAND;
 		}
-		else if(!CanJump(ship))
-		{
-			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
-			command |= Command::FORWARD;
-		}
 		else if(ship.GetTargetSystem())
 		{
-			PrepareForHyperspace(ship, command);
-			command |= Command::JUMP;
+			if(JumpBlocked(ship))
+			{
+				command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
+				command |= Command::FORWARD;
+			}
+			else
+			{
+				PrepareForHyperspace(ship, command);
+				command |= Command::JUMP;
+			}
 		}
 	}
 	else if(parent.Commands().Has(Command::LAND) && parentIsHere && planetIsHere && parentPlanet->CanLand(ship))
@@ -1168,7 +1174,7 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 		ship.SetTargetSystem(dest);
 		if(!dest || (ship.GetSystem()->HasFuelFor(ship) && !dest->HasFuelFor(ship) && ship.JumpsRemaining() == 1))
 			Refuel(ship, command);
-		else if(!CanJump(ship))
+		else if(JumpBlocked(ship))
 		{
 			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
 			command |= Command::FORWARD;
@@ -1186,20 +1192,13 @@ void AI::MoveEscort(Ship &ship, Command &command) const
 
 
 
-bool AI::CanJump(Ship &ship) const
+// Determine if this ship is being blocked from jumping.
+bool AI::JumpBlocked(Ship &ship) const
 {
-	if(!(ship.Attributes().Get("hyperdrive") || ship.Attributes().Get("jump drive")))
-		return false;
-	if(!ship.JumpFuel(ship.GetTargetSystem()) || !(ship.JumpsRemaining() || ship.IsEnteringHyperspace()))
-		return false;
-		
 	if(auraSystems.count(ship.GetSystem()))
-	{
-		Point interdictionVector = AuraStrength(Auras::JUMP_INTERDICTION, ship, true);
-		return interdictionVector.Length() < 1.;
-	}
+		return AuraStrength(Auras::JUMP_INTERDICTION, ship, true).Length() > 1.;
 	
-	return true;
+	return false;
 }
 
 
@@ -1227,8 +1226,8 @@ void AI::BuildAuraMaps(const int auraType)
 
 
 
-// Calculate the aura strength vector for the ship at a given position. This vector reflects the 
-// relative positions of all auras of type 'auraType' that the ship is affected by. If a ship 
+// Calculate the aura strength vector for the ship at a given position. This vector reflects the
+// relative positions of all auras of type 'auraType' that the ship is affected by. If a ship
 // travels in the direction of this vector, it will remove itself from any aura that envelop it.
 // The relationship with the aura generator is controlled by 'ifHostile': if false, auras
 // created by allies will be considered instead of auras created by enemies.
@@ -1245,7 +1244,7 @@ Point AI::AuraStrength(const int auraType, const Ship &ship, const bool ifHostil
 			{
 				Point fleeVector = ship.Position() - emitter.first;
 				if(fleeVector.Length() < emitter.second)
-					auraStrength += fleeVector * (emitter.second - fleeVector.Length());
+					auraStrength += fleeVector.Unit() * (emitter.second - fleeVector.Length());
 			}
 		}
 	
@@ -1708,16 +1707,16 @@ void AI::DoSurveillance(Ship &ship, Command &command) const
 	// This function is only called for ships that are in the player's system.
 	if(ship.GetTargetSystem())
 	{
-		if(CanJump(ship))
+		if(JumpBlocked(ship))
+		{
+			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
+			command |= Command::FORWARD;
+		}
+		else
 		{
 			PrepareForHyperspace(ship, command);
 			command |= Command::JUMP;
 			command |= Command::DEPLOY;
-		}
-		else
-		{
-			command.SetTurn(TurnToward(ship, AuraStrength(Auras::JUMP_INTERDICTION, ship, true)));
-			command |= Command::FORWARD;
 		}
 	}
 	else if(ship.GetTargetStellar())
@@ -2858,7 +2857,7 @@ void AI::MovePlayer(Ship &ship, const PlayerInfo &player)
 			if(keyDown.Has(Command::JUMP) || !keyHeld.Has(Command::JUMP))
 				Audio::Play(Audio::Get("fail"));
 		}
-		else if(!CanJump(ship))
+		else if(JumpBlocked(ship))
 		{
 			Messages::Add("You cannot make hyperspace jumps while within range of an enemy interdiction aura.");
 			keyStuck.Clear();
