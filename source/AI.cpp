@@ -1214,7 +1214,7 @@ const Point AI::InterdictorVector(const Ship &ship) const
 			
 		double jumpRadius = it->Attributes().Get("jump interdiction");
 		position = it->Position() - ship.Position();
-		if(jumpRadius && it->GetGovernment()->IsEnemy(ship.GetGovernment())
+		if(jumpRadius && it->GetGovernment()->IsEnemy(ship.GetGovernment()))
 		{
 			if(&ship != it.get() && abs(position.Length()) <= jumpRadius)
 				break;
