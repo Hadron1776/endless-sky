@@ -1367,21 +1367,34 @@ void Engine::CalculateStep()
 		}
 		else
 		{
+			bool hitsCloakedTargets = projectile.GetWeapon().HitsCloakedTargets();
 			double triggerRadius = projectile.GetWeapon().TriggerRadius();
 			if(triggerRadius)
 			{
-				// Check if something triggered this projectile.
+				// Check if something triggered this projectile. Weapons that "detect" can hit cloaked targets as well.
 				for(const Body *body : shipCollisions.Circle(projectile.Position(), triggerRadius))
 					if(body == projectile.Target() || gov->IsEnemy(body->GetGovernment()))
 					{
 						closestHit = 0.;
 						break;
 					}
+				if(hitsCloakedTargets)
+				{
+					for(const Body *body : cloakedCollisions.Circle(projectile.Position(), triggerRadius))
+						if(body == projectile.Target() || gov->IsEnemy(body->GetGovernment()))
+						{
+							closestHit = 0.;
+							break;
+						}
+				}
 			}
 			if(closestHit > 0.)
 			{
-				// If the projectile was not triggered, check if it hit a ship.
+				// If the projectile was not triggered, check if it hit a ship. Projectiles that "detect" can hit cloaked ships,
+				// even though the ship firing them can't target them.
 				Ship *ship = reinterpret_cast<Ship *>(shipCollisions.Line(projectile, &closestHit));
+				if(!ship && hitsCloakedTargets)
+					ship = reinterpret_cast<Ship *>(cloakedCollisions.Line(projectile, &closestHit));
 				if(ship)
 				{
 					hit = ship->shared_from_this();
