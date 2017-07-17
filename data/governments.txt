@@ -269,6 +269,7 @@ government "Pug"
 	"attitude toward"
 		"Merchant" .1
 		"Pirate" -.1
+		"Quarg" -.08
 	"friendly hail" "friendly pug"
 	"hostile hail" "hostile pug"
 
@@ -283,6 +284,7 @@ government "Quarg"
 		"Kor Mereti" -.01
 		"Kor Sestor" -.01
 		"Hai" .01
+		"Pug" -.08
 		"Pirate" -.01
 	"hostile hail" "hostile quarg"
 
