@@ -48,6 +48,7 @@ public:
 	int GetSwizzle() const;
 	// Get the color to use for displaying this government on the map.
 	const Color &GetColor() const;
+	bool IsKnown() const;
 	
 	// Get the government's initial disposition toward other governments or
 	// toward the player.
@@ -69,18 +70,25 @@ public:
 	// Get a hail message (which depends on whether this is an enemy government
 	// and if the ship is disabled).
 	std::string GetHail(bool isDisabled) const;
+	// Get the government's tribute messages.
+	std::string GetTributeMessage(int condition) const;
+	
 	// Find out if this government speaks a different language.
 	const std::string &Language() const;
 	// Pirate raids in this government's systems use this fleet definition. If
 	// it is null, there are no pirate raids.
 	const Fleet *RaidFleet() const;
 	
+	const Fleet *BountyHuntingFleet() const;
+	const int64_t BountyHunterThreshold() const;
+
 	// Check if, according to the politics stored by GameData, this government is
 	// an enemy of the given government right now.
 	bool IsEnemy(const Government *other) const;
 	// Check if this government is an enemy of the player.
 	bool IsEnemy() const;
 	
+	bool IsReputationLocked() const;
 	// Below are shortcut functions which actually alter the game state in the
 	// Politics object, but are provided as member functions here for clearer syntax.
 	
@@ -102,6 +110,10 @@ public:
 	void AddReputation(double value) const;
 	void SetReputation(double value) const;
 	
+	// Get the government's crew attack/defense values
+	double CrewAttack() const;
+	double CrewDefense() const;
+	
 	
 private:
 	unsigned id;
@@ -114,13 +126,24 @@ private:
 	std::map<int, double> penaltyFor;
 	double bribe = 0.;
 	double fine = 1.;
+	int64_t bountyHunterThreshold = 8103;
 	const Conversation *deathSentence = nullptr;
 	const Phrase *friendlyHail = nullptr;
 	const Phrase *friendlyDisabledHail = nullptr;
 	const Phrase *hostileHail = nullptr;
 	const Phrase *hostileDisabledHail = nullptr;
+	const Phrase *tributeIgnoredMessage = nullptr;
+	const Phrase *tributeRelinquishedMessage = nullptr;
+	const Phrase *tributeInProgressMessage = nullptr;
+	const Phrase *tributeBattleMessage = nullptr;
+	const Phrase *tributeSurrenderedMessage = nullptr;
 	std::string language;
+	bool repLocked = false;
+	bool known = true;
 	const Fleet *raidFleet = nullptr;
+	const Fleet *bountyHuntingFleet = nullptr;
+	double crewAttack = 1.;
+	double crewDefense = 2.;
 };
 
 

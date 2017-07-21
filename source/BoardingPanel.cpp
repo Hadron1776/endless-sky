@@ -103,7 +103,12 @@ BoardingPanel::BoardingPanel(PlayerInfo &player, const shared_ptr<Ship> &victim)
 	
 	// Some "ships" do not represent something the player could actually pilot.
 	if(!victim->IsCapturable())
-		messages.emplace_back("This is not a ship that you can capture.");
+	{
+		if(player.IsBiosphereCompatible(&*victim))
+			messages.emplace_back("This is not a ship that you can capture.");
+		else
+			messages.emplace_back("You cannot survive aboard this ship.");
+	}
 	
 	// Sort the plunder by price per ton.
 	sort(plunder.begin(), plunder.end());
@@ -295,7 +300,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 		// A ship that self-destructs checks once when you board it, and again
 		// when you try to capture it, to see if it will self-destruct. This is
 		// so that capturing will be harder than plundering.
-		if(Random::Real() < victim->Attributes().Get("self destruct"))
+		if(Random::Real() < victim->Attributes().Get("self destruct") - you->Attributes().Get("command disruption"))
 		{
 			victim->SelfDestruct();
 			GetUI()->Pop(this);
@@ -321,11 +326,12 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 			enemyAttacks = false;
 		isFirstCaptureAction = false;
 		
-		// If neither side attacks, combat ends.
+		// If neither side attacks, combat ends. Reset the first action in case the player 'attempts capture' again.
 		if(!youAttack && !enemyAttacks)
 		{
 			messages.push_back("You retreat to your ships. Combat ends.");
 			isCapturing = false;
+			isFirstCaptureAction = true;
 		}
 		else
 		{
@@ -384,7 +390,6 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 			else if(!victim->Crew())
 			{
 				messages.push_back("You have succeeded in capturing this ship.");
-				victim->GetGovernment()->Offend(ShipEvent::CAPTURE, victim->RequiredCrew());
 				victim->WasCaptured(you);
 				if(!victim->JumpsRemaining() && you->CanRefuel(*victim))
 					you->TransferFuel(victim->JumpFuelMissing(), &*victim);
@@ -473,6 +478,8 @@ bool BoardingPanel::CanTake() const
 		return false;
 	if(static_cast<unsigned>(selected) >= plunder.size())
 		return false;
+	if(!player.IsBiosphereCompatible(&*victim))
+		return false;
 	
 	return plunder[selected].CanTake(*you);
 }
@@ -492,6 +499,8 @@ bool BoardingPanel::CanCapture() const
 	if(victim->GetGovernment()->IsPlayer())
 		return false;
 	if(!victim->IsCapturable())
+		return false;
+	if(!player.IsBiosphereCompatible(&*victim))
 		return false;
 	
 	return (!victim->RequiredCrew() || you->Crew() > 1);

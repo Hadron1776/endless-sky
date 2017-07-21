@@ -65,7 +65,7 @@ public:
 	// be subtracted from the given ship.
 	void Fire(Ship &ship, std::list<Projectile> &projectiles, std::list<Effect> &effects);
 	// Fire an anti-missile. Returns true if the missile should be killed.
-	bool FireAntiMissile(Ship &ship, const Projectile &projectile, std::list<Effect> &effects);
+	bool FireAntiMissile(Ship &ship, Projectile &projectile, std::list<Effect> &effects);
 	
 	// Install a weapon here (assuming it is empty). This is only for
 	// Armament to call internally.

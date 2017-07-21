@@ -13,6 +13,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Projectile.h"
 
 #include "Effect.h"
+#include "Government.h"
 #include "Mask.h"
 #include "Outfit.h"
 #include "pi.h"
@@ -36,19 +37,24 @@ namespace {
 
 
 
-Projectile::Projectile(const Ship &parent, Point position, Angle angle, const Outfit *weapon)
+Projectile::Projectile(Ship &parent, Point position, Angle angle, const Outfit *weapon)
 	: Body(weapon->WeaponSprite(), position, parent.Velocity(), angle),
 	weapon(weapon), targetShip(parent.GetTargetShip()), lifetime(weapon->Lifetime())
 {
 	government = parent.GetGovernment();
+	missileStrengthRemaining = MissileStrength();
 	
 	// If you are boarding your target, do not fire on it.
 	if(parent.IsBoarding() || parent.Commands().Has(Command::BOARD))
 		targetShip.reset();
 	
+	owner = &parent;
 	cachedTarget = targetShip.lock().get();
 	if(cachedTarget)
+	{
 		targetGovernment = cachedTarget->GetGovernment();
+		wasEnemy = cachedTarget->GetGovernment()->IsEnemy(government);
+	}
 	double inaccuracy = weapon->Inaccuracy();
 	if(inaccuracy)
 		this->angle += Angle::Random(inaccuracy) - Angle::Random(inaccuracy);
@@ -68,6 +74,7 @@ Projectile::Projectile(const Projectile &parent, const Outfit *weapon)
 {
 	government = parent.government;
 	targetGovernment = parent.targetGovernment;
+	missileStrengthRemaining = MissileStrength();
 	
 	cachedTarget = targetShip.lock().get();
 	double inaccuracy = weapon->Inaccuracy();
@@ -83,6 +90,7 @@ Projectile::Projectile(const Projectile &parent, const Outfit *weapon)
 	}
 	velocity += this->angle.Unit() * (weapon->Velocity() + Random::Real() * weapon->RandomVelocity());
 	
+	owner = parent.owner;
 	// If a random lifetime is specified, add a random amount up to that amount.
 	if(weapon->RandomLifetime())
 		lifetime += Random::Int(weapon->RandomLifetime() + 1);
@@ -124,12 +132,12 @@ bool Projectile::Move(list<Effect> &effects)
 		}
 	
 	// If the target has left the system, stop following it. Also stop if the
-	// target has been captured by a different government.
+	// target has been captured by a different government, or if the target's government becomes friendly.
 	const Ship *target = cachedTarget;
 	if(target)
 	{
 		target = targetShip.lock().get();
-		if(!target || !target->IsTargetable() || target->GetGovernment() != targetGovernment)
+		if(!target || !target->IsTargetable() || target->GetGovernment() != targetGovernment || (wasEnemy && !target->GetGovernment()->IsEnemy(government)))
 		{
 			targetShip.reset();
 			cachedTarget = nullptr;
@@ -264,9 +272,33 @@ void Projectile::Kill()
 
 // Find out if this is a missile, and if so, how strong it is (i.e. what
 // chance an anti-missile shot has of destroying it).
-int Projectile::MissileStrength() const
+double Projectile::MissileStrength() const
 {
 	return weapon->MissileStrength();
+}
+
+
+
+// Get the remaining strength of the missile
+double Projectile::MissileStrengthRemaining() const
+{
+	return missileStrengthRemaining;
+}
+
+
+
+// Add to the strength of the missile
+void Projectile::AddMissileStrength(double strength)
+{
+	missileStrengthRemaining += strength;
+}
+
+
+
+// Remove from the strength of the missile
+void Projectile::RemoveMissileStrength(double strength)
+{
+	missileStrengthRemaining -= strength;
 }
 
 
@@ -290,6 +322,14 @@ const Ship *Projectile::Target() const
 shared_ptr<Ship> Projectile::TargetPtr() const
 {
 	return targetShip.lock();
+}
+
+
+
+// Get the evasion chance of this projectile
+const double Projectile::Evasion()
+{
+	return weapon->Evasion();
 }
 
 
@@ -327,4 +367,11 @@ void Projectile::CheckLock(const Ship &target)
 		double probability = weapon->RadarTracking() / (1. + target.Attributes().Get("radar jamming"));
 		hasLock |= Check(probability, base);
 	}
+}
+
+
+
+const Ship *Projectile::Parent() const
+{
+	return owner;
 }

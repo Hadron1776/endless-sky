@@ -399,12 +399,17 @@ void PlayerInfo::ApplyChanges()
 	GameData::SetDate(GetDate());
 	// SetDate() clears any bribes from yesterday, so restore any auto-clearance.
 	for(const Mission &mission : Missions())
+	{
 		if(mission.ClearanceMessage() == "auto")
 		{
 			mission.Destination()->Bribe(mission.HasFullClearance());
 			for(const Planet *planet : mission.Stopovers())
 				planet->Bribe(mission.HasFullClearance());
 		}
+		for(const Government *gov : mission.ProvokedGovernments())
+			if(!gov->IsEnemy())
+				gov->Offend(ShipEvent::PROVOKE);
+	}
 	if(system)
 		GameData::GetPolitics().Bribe(system->GetGovernment());
 	
@@ -456,6 +461,7 @@ void PlayerInfo::AddChanges(list<DataNode> &changes)
 	{
 		// Recalculate what systems have been seen.
 		GameData::UpdateNeighbors();
+		GameData::UpdateWarpLinks();
 		seen.clear();
 		for(const System *system : visitedSystems)
 		{
@@ -1248,9 +1254,11 @@ bool PlayerInfo::TakeOff(UI *ui)
 	if(shipsSold[0] || shipsSold[1])
 	{
 		// If your fleet contains more fighters or drones than you can carry,
-		// some of them must be sold.
+		// some of them must be sold. If the planet does not have a shipyard,
+		// they must instead be disowned
 		ostringstream out;
-		out << "Because none of your ships can carry them, you sold ";
+		out << "Because none of your ships can carry them, you ";
+		out << (planet->HasShipyard() ? "sold " : "disowned ");
 		if(shipsSold[1])
 			out << shipsSold[1]
 				<< (shipsSold[1] == 1 ? " fighter" : " fighters");
@@ -1259,9 +1267,13 @@ bool PlayerInfo::TakeOff(UI *ui)
 		if(shipsSold[0])
 			out << shipsSold[0]
 				<< (shipsSold[0] == 1 ? " drone" : " drones");
-		
-		out << ", earning " << Format::Number(income) << " credits.";
-		accounts.AddCredits(income);
+		if(planet->HasShipyard())
+		{
+			out << ", earning " << Format::Number(income) << " credits.";
+			accounts.AddCredits(income);			
+		}
+		else
+			out << ".";
 		Messages::Add(out.str());
 	}
 	
@@ -2475,4 +2487,16 @@ void PlayerInfo::SelectShip(const shared_ptr<Ship> &ship, bool *first)
 			*first = false;
 		}
 	}
+}
+
+
+
+bool PlayerInfo::IsBiosphereCompatible(Ship *ship)
+{
+	if(ship->Biosphere().empty())
+		return true;
+	if(ship->IsYours())
+		return true;
+
+	return GetCondition("biosphere: " + ship->Biosphere());
 }

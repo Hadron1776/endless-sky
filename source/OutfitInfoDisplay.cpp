@@ -66,7 +66,9 @@ namespace {
 		{"unplunderable", "This outfit cannot be plundered."},
 		{"installable", "This is not an installable item."},
 		{"hyperdrive", "Allows you to make hyperjumps."},
-		{"jump drive", "Lets you jump to any nearby system."}
+		{"jump drive", "Lets you jump to any nearby system."},
+		{"warp drive", "Lets you jump to any nearby system that has a hyperspace link."}
+		
 	};
 }
 
@@ -195,7 +197,62 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 			attributesHeight += 20;
 		}
 	}
-	
+	if(outfit.IllegalCargoFine() || outfit.AdditionalCargoFine())
+	{
+		attributeLabels.push_back("This outfit is illegal.");
+		attributeValues.push_back(" ");
+		attributesHeight += 20;
+	}
+	if(!outfit.BonusMap().empty())
+	{
+		attributeLabels.push_back("damage type enhancement:");
+		attributeValues.push_back(" ");
+		attributesHeight += 20;
+		for(const auto &it : outfit.BonusMap())
+		{
+			if(it.second != 0)
+			{
+				attributeLabels.push_back("    " + it.first + ':');
+				if(it.second < 2.)
+					attributeValues.push_back(Format::Number((1. + it.second) * 100.) + '%');
+				else
+					attributeValues.push_back(Format::Number((1. + it.second) + 'x'));
+				attributesHeight += 20;
+			}
+		}
+	}
+	if(!outfit.ShieldResistanceMap().empty())
+	{
+		attributeLabels.push_back("shield damage resistance:");
+		attributeValues.push_back(" ");
+		attributesHeight += 20;
+		for(const auto &it : outfit.ShieldResistanceMap())
+		{
+			if(it.second != 0.)
+			{
+				attributeLabels.push_back("    " + Format::LowerCase(it.first) + ":");
+				attributeValues.push_back(Format::Number(it.second * 100) + "%");
+				attributesHeight += 20;
+			}
+		}
+	}
+	if(!outfit.HullResistanceMap().empty())
+	{
+		attributeLabels.push_back(" ");
+		attributeValues.push_back(" ");
+		attributeLabels.push_back("hull damage resistance:");
+		attributeValues.push_back(" ");
+		attributesHeight += 20;
+		for(const auto &it : outfit.HullResistanceMap())
+		{
+			if(it.second != 0.)
+			{
+				attributeLabels.push_back("    " + Format::LowerCase(it.first) + ":");
+				attributeValues.push_back(Format::Number(it.second * 100) + "%");
+				attributesHeight += 20;
+			}
+		}
+	}
 	if(!outfit.IsWeapon())
 		return;
 	
@@ -207,6 +264,35 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 	{
 		attributeLabels.push_back("ammo:");
 		attributeValues.push_back(outfit.Ammo()->Name());
+		attributesHeight += 20;
+	}
+	
+	if((outfit.AttributeBonusMap().size() > 1) || (outfit.AttributeBonusMap().size() > 0 && !outfit.MiningDamageMultiplier()))
+	{
+		attributeLabels.push_back("damage bonus vs:");
+		attributeValues.push_back(" ");
+		attributesHeight += 20;
+		for(const auto &it : outfit.AttributeBonusMap())
+		{
+			if(it.first != "minable")
+			{
+				attributeLabels.push_back("    " + it.first + ':');
+				if(it.second < 2.)
+					attributeValues.push_back(Format::Number((1. + it.second) * 100.) + '%');
+				else
+					attributeValues.push_back(Format::Number((1. + it.second)) + 'x');
+				attributesHeight += 20;
+			}
+		}
+	}
+	
+	if(outfit.MiningDamageMultiplier())
+	{
+		attributeLabels.push_back("mining multiplier:");
+		if(outfit.MiningDamageMultiplier() < 2.)
+			attributeValues.push_back(Format::Number(outfit.MiningDamageMultiplier() * 100.) + '%');
+		else
+			attributeValues.push_back(Format::Number(outfit.MiningDamageMultiplier()) + 'x');
 		attributesHeight += 20;
 	}
 	
@@ -277,6 +363,27 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 		attributesHeight += 20;
 	}
 	
+	if(outfit.FiringShield() && outfit.Reload())
+	{
+		attributeLabels.push_back("firing shields / second:");
+		attributeValues.push_back(Format::Number(60. * outfit.FiringShield() / outfit.Reload()));
+		attributesHeight += 20;
+	}
+	
+	if(outfit.FiringHull() && outfit.Reload())
+	{
+		attributeLabels.push_back("firing hull / second:");
+		attributeValues.push_back(Format::Number(60. * outfit.FiringHull() / outfit.Reload()));
+		attributesHeight += 20;
+	}
+	
+	if(outfit.Facing())
+	{
+		attributeLabels.push_back("facing offset:");
+		attributeValues.push_back(Format::Number(outfit.Facing()));
+		attributesHeight += 20;
+	}
+	
 	bool isContinuous = (outfit.Reload() <= 1);
 	attributeLabels.push_back("shots / second:");
 	if(isContinuous)
@@ -311,14 +418,18 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 		"optical tracking:",
 		"infrared tracking:",
 		"radar tracking:",
-		"piercing:"
+		"piercing:",
+		"missile evasion:",
+		"ammo conservation:"
 	};
 	vector<double> percentValues = {
 		outfit.Tracking(),
 		outfit.OpticalTracking(),
 		outfit.InfraredTracking(),
 		outfit.RadarTracking(),
-		outfit.Piercing()
+		outfit.Piercing(),
+		outfit.Evasion(),
+		outfit.Conservation()
 	};
 	for(unsigned i = 0; i < PERCENT_NAMES.size(); ++i)
 		if(percentValues[i])
@@ -328,7 +439,19 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 			attributeValues.push_back(Format::Number(percent) + "%");
 			attributesHeight += 20;
 		}
-	
+	string damageType = outfit.DamageType();
+	if(!damageType.empty() && !outfit.AntiMissile())
+	{
+		attributeLabels.push_back("damage type:");
+		attributeValues.push_back(Format::LowerCase(damageType));
+		attributesHeight += 20;
+	}
+	if(outfit.HitsCloakedTargets())
+	{
+		attributeLabels.push_back("This weapon hits cloaked ships.");
+		attributeValues.push_back(" ");
+		attributesHeight += 20;
+	}
 	attributeLabels.push_back(string());
 	attributeValues.push_back(string());
 	attributesHeight += 10;
@@ -340,9 +463,12 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 		"ion damage / shot:",
 		"slowing damage / shot:",
 		"disruption damage / shot:",
+		"cold damage / shot:",
 		"firing energy / shot:",
 		"firing heat / shot:",
 		"firing fuel / shot:",
+		"firing shields / shot:",
+		"firing hull / shot:",
 		"inaccuracy:",
 		"blast radius:",
 		"missile strength:",
@@ -355,15 +481,18 @@ void OutfitInfoDisplay::UpdateAttributes(const Outfit &outfit)
 		outfit.IonDamage() * 100.,
 		outfit.SlowingDamage() * 100.,
 		outfit.DisruptionDamage() * 100.,
+		outfit.ColdDamage() * 100.,
 		outfit.FiringEnergy(),
 		outfit.FiringHeat(),
 		outfit.FiringFuel(),
+		outfit.FiringShield(),
+		outfit.FiringHull(),
 		outfit.Inaccuracy(),
 		outfit.BlastRadius(),
 		static_cast<double>(outfit.MissileStrength()),
 		static_cast<double>(outfit.AntiMissile())
 	};
-	for(unsigned i = (isContinuous ? 9 : 0); i < OTHER_NAMES.size(); ++i)
+	for(unsigned i = (isContinuous ? 11 : 0); i < OTHER_NAMES.size(); ++i)
 		if(values[i])
 		{
 			attributeLabels.push_back(OTHER_NAMES[i]);

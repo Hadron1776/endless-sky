@@ -117,6 +117,8 @@ public:
 	const std::string &Noun() const;
 	// Get this ship's description.
 	const std::string &Description() const;
+	// Get this ship's biosphere
+	const std::string &Biosphere() const;
 	// Get this ship's cost.
 	int64_t Cost() const;
 	int64_t ChassisCost() const;
@@ -129,6 +131,8 @@ public:
 	void SetGovernment(const Government *government);
 	void SetIsSpecial(bool special = true);
 	bool IsSpecial() const;
+	void SetFuelGeneration(double fuelGen);
+	void IncFuelGeneration(double fuelGen);
 	
 	// If a ship belongs to the player, the player can give it commands.
 	void SetIsYours(bool yours = true);
@@ -170,18 +174,22 @@ public:
 	// collision detection finds a missile in range.
 	bool Fire(std::list<Projectile> &projectiles, std::list<Effect> &effects);
 	// Fire an anti-missile. Returns true if the missile was killed.
-	bool FireAntiMissile(const Projectile &projectile, std::list<Effect> &effects);
+	bool FireAntiMissile(Projectile &projectile, std::list<Effect> &effects);
 	
 	// Get the system this ship is in.
 	const System *GetSystem() const;
 	// If the ship is landed, get the planet it has landed on.
 	const Planet *GetPlanet() const;
+	// Remember who killed us, if anyone
+	const Ship *GetDestroyer() const;
+	void SetDestroyer(Ship *ship);
 	
 	// Check the status of this ship.
 	bool IsCapturable() const;
 	bool IsTargetable() const;
 	bool IsOverheated() const;
 	bool IsDisabled() const;
+	bool IsStranded() const;
 	bool IsBoarding() const;
 	bool IsLanding() const;
 	// Check if this ship is currently able to begin landing on its target.
@@ -189,6 +197,7 @@ public:
 	// Check if some condition is keeping this ship from acting. (That is, it is
 	// landing, hyperspacing, cloaking, disabled, or under-crewed.)
 	bool CannotAct() const;
+	bool IsPhased() const;
 	// Get the degree to which this ship is cloaked. 1 means invisible and
 	// impossible to hit or target; 0 means fully visible.
 	double Cloaking() const;
@@ -202,6 +211,9 @@ public:
 	bool IsReadyToJump() const;
 	// Get this ship's custom swizzle.
 	int CustomSwizzle() const;
+	
+	void SetOriginPlanet(const Planet *planet);
+	const Planet *OriginPlanet() const;
 	
 	// Check if the ship is thrusting. If so, the engine sound should be played.
 	bool IsThrusting() const;
@@ -225,10 +237,15 @@ public:
 	
 	// Get characteristics of this ship, as a fraction between 0 and 1.
 	double Shields() const;
+	double ShieldsAbsolute() const;
 	double Hull() const;
+	double HullAbsolute() const;
 	double Energy() const;
 	double Heat() const;
+	double HeatAbsolute() const;
 	double Fuel() const;
+	double FuelGeneration() const;
+	
 	// Get the number of jumps this ship can make before running out of fuel.
 	// This depends on how much fuel it has and what sort of hyperdrive it uses.
 	int JumpsRemaining() const;
@@ -237,6 +254,7 @@ public:
 	// Get the cost of making a jump of the given type (if possible).
 	double HyperdriveFuel() const;
 	double JumpDriveFuel() const;
+	double WarpDriveFuel() const;
 	// Get the amount of fuel missing for the next jump (smart refuelling)
 	double JumpFuelMissing() const;
 	// Get the heat level at idle.
@@ -257,12 +275,22 @@ public:
 	double Acceleration() const;
 	double MaxVelocity() const;
 	
+	// Get the ship's resistance to damage types
+	double ShieldResistance(std::string damageType);
+	double HullResistance(std::string damageType);
+	
 	// This ship just got hit by the given projectile. Take damage according to
 	// what sort of weapon the projectile it. The return value is a ShipEvent
 	// type, which may be a combination of PROVOKED, DISABLED, and DESTROYED.
 	// If isBlast, this ship was caught in the blast radius of a weapon but was
 	// not necessarily its primary target.
-	int TakeDamage(const Projectile &projectile, bool isBlast = false);
+	int TakeDamage(Projectile &projectile, bool isBlast = false);
+	const double DamageBonus(std::string damageType, const Ship *target) const;
+	const double MiningDamageMultiplier() const;
+	const std::map<std::string, double> &BonusMap() const;
+	const std::map<std::string, double> &AttributeBonusMap() const;
+	const std::map<std::string, double> &ShieldResistanceMap() const;
+	const std::map<std::string, double> &HullResistanceMap() const;
 	// Apply a force to this ship, accelerating it. This might be from a weapon
 	// impact, or from firing a weapon, for example.
 	void ApplyForce(const Point &force);
@@ -379,6 +407,7 @@ private:
 	std::string pluralModelName;
 	std::string noun;
 	std::string description;
+	std::string biosphere;
 	// Characteristics of this particular ship:
 	std::string name;
 	
@@ -417,6 +446,10 @@ private:
 	Outfit baseAttributes;
 	const Outfit *explosionWeapon = nullptr;
 	std::map<const Outfit *, int> outfits;
+	std::map<std::string, double> bonusMap;
+	std::map<std::string, double> attributeBonusMap;
+	std::map<std::string, double> shieldResistanceMap;
+	std::map<std::string, double> hullResistanceMap;
 	CargoHold cargo;
 	std::list<std::shared_ptr<Flotsam>> jettisoned;
 	
@@ -437,6 +470,9 @@ private:
 	double ionization = 0.;
 	double disruption = 0.;
 	double slowness = 0.;
+	int shieldDelay = 0;
+	double fuelGeneration = 0.;
+	double minableDamageMultiplier = 0.;
 	// Acceleration can be created by engines, firing weapons, or weapon impacts.
 	Point acceleration;
 	
@@ -449,6 +485,7 @@ private:
 	// A Ship can be locked into one of three special states: landing,
 	// hyperspacing, and exploding. Each one must track some special counters:
 	const Planet *landingPlanet = nullptr;
+	const Planet *originPlanet = nullptr;
 	
 	int hyperspaceCount = 0;
 	const System *hyperspaceSystem = nullptr;
@@ -474,6 +511,14 @@ private:
 	std::vector<std::weak_ptr<Ship>> escorts;
 	std::weak_ptr<Ship> parent;
 };
+
+
+// These are called every time a ship takes damage (Which is a lot), so inline them for speed.
+inline const std::map<std::string, double> &Ship::ShieldResistanceMap() const { return shieldResistanceMap; }
+inline const std::map<std::string, double> &Ship::HullResistanceMap() const { return hullResistanceMap; }
+inline const double Ship::MiningDamageMultiplier() const { return minableDamageMultiplier; }
+inline const std::map<std::string, double> &Ship::AttributeBonusMap() const { return attributeBonusMap; }
+inline const std::map<std::string, double> &Ship::BonusMap() const { return bonusMap; }
 
 
 

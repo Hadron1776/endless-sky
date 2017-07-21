@@ -35,7 +35,7 @@ class Ship;
 // projectiles that may look different or travel in a new direction.
 class Projectile : public Body {
 public:
-	Projectile(const Ship &parent, Point position, Angle angle, const Outfit *weapon);
+	Projectile(Ship &parent, Point position, Angle angle, const Outfit *weapon);
 	Projectile(const Projectile &parent, const Outfit *weapon);
 	// Ship explosion.
 	Projectile(Point position, const Outfit *weapon);
@@ -60,18 +60,27 @@ public:
 	// This projectile was killed, e.g. by an anti-missile system.
 	void Kill();
 	
-	// Find out if this is a missile, and if so, how strong it is (i.e. what
-	// chance an anti-missile shot has of destroying it).
-	int MissileStrength() const;
+	// Find out if this is a missile, and if so, how strong it is.
+	double MissileStrength() const;
+	// Find the remaining strength of the projectile
+	double MissileStrengthRemaining() const;
+	// Modify the strength of the missile
+	void AddMissileStrength(double strength);
+	void RemoveMissileStrength(double strength);
 	// Get information on the weapon that fired this projectile.
 	const Outfit &GetWeapon() const;
+	
+	// Get the evasion chance of this projectile
+	const double Evasion();
 	
 	// Find out which ship this projectile is targeting. Note: this pointer is
 	// not guaranteed to be dereferenceable, so only use it for comparing.
 	const Ship *Target() const;
+	
 	// This function is much more costly, so use it only if you need to get a
 	// non-const shared pointer to the target.
 	std::shared_ptr<Ship> TargetPtr() const;
+	const Ship *Parent() const;
 	
 	
 private:
@@ -86,7 +95,14 @@ private:
 	const Government *targetGovernment = nullptr;
 	
 	int lifetime = 0;
+	double missileStrengthRemaining = 10;
 	bool hasLock = true;
+	bool wasEnemy = true;
+	Ship *owner = nullptr;
+	
+	// For "Penetrating" weapons, track the current hit so the projectile
+	// does not hit the same target twice in one pass
+	Body *currentHit = nullptr;
 };
 
 

@@ -58,6 +58,12 @@ void Government::Load(const DataNode &node)
 			color = Color(child.Value(1), child.Value(2), child.Value(3));
 		else if(child.Token(0) == "player reputation" && child.Size() >= 2)
 			initialPlayerReputation = child.Value(1);
+		else if(child.Token(0) == "unwavering" && child.Size() >= 2)
+			repLocked = (child.Value(1) > 0);
+		else if(child.Token(0) == "crew attack" && child.Size() >= 2)
+			crewAttack = child.Value(1);
+		else if(child.Token(0) == "crew defense" && child.Size() >= 2)
+			crewDefense = child.Value(1);
 		else if(child.Token(0) == "attitude toward")
 		{
 			for(const DataNode &grand : child)
@@ -111,15 +117,43 @@ void Government::Load(const DataNode &node)
 			language = child.Token(1);
 		else if(child.Token(0) == "raid" && child.Size() >= 2)
 			raidFleet = GameData::Fleets().Get(child.Token(1));
+		else if(child.Token(0) == "bounty hunters" && child.Size() >= 2)
+		{
+			bountyHuntingFleet = GameData::Fleets().Get(child.Token(1));
+			if(child.Size() >= 3)
+				bountyHunterThreshold = child.Value(2);
+		}
+		else if(child.Token(0) == "hidden" && child.Size() >= 2)
+			known = (child.Value(1) == 0);
+		else if(child.Token(0) == "tribute ignored message" && child.Size() >= 2)
+			tributeIgnoredMessage = GameData::Phrases().Get(child.Token(1));
+		else if(child.Token(0) == "tribute relinquished message" && child.Size() >= 2)
+			tributeRelinquishedMessage = GameData::Phrases().Get(child.Token(1));
+		else if(child.Token(0) == "tribute in progress message" && child.Size() >= 2)
+			tributeInProgressMessage = GameData::Phrases().Get(child.Token(1));
+		else if(child.Token(0) == "tribute battle message" && child.Size() >= 2)
+			tributeBattleMessage = GameData::Phrases().Get(child.Token(1));
+		else if(child.Token(0) == "tribute surrendered message" && child.Size() >= 2)
+			tributeSurrenderedMessage = GameData::Phrases().Get(child.Token(1));
 		else
 			child.PrintTrace("Skipping unrecognized attribute:");
 	}
 	
-	// Default to the standard disabled hail messages.
+	// Default to the standard disabled and tribute hail messages.
 	if(!friendlyDisabledHail)
 		friendlyDisabledHail = GameData::Phrases().Get("friendly disabled");
 	if(!hostileDisabledHail)
 		hostileDisabledHail = GameData::Phrases().Get("hostile disabled");
+	if(!tributeIgnoredMessage)
+		tributeIgnoredMessage = GameData::Phrases().Get("tribute ignored message");
+	if(!tributeBattleMessage)
+		tributeBattleMessage = GameData::Phrases().Get("tribute battle message");
+	if(!tributeRelinquishedMessage)
+		tributeRelinquishedMessage = GameData::Phrases().Get("tribute relinquished message");
+	if(!tributeInProgressMessage)
+		tributeInProgressMessage = GameData::Phrases().Get("tribute in progress message");
+	if(!tributeSurrenderedMessage)
+		tributeSurrenderedMessage = GameData::Phrases().Get("tribute surrendered message");
 }
 
 
@@ -146,6 +180,12 @@ const Color &Government::GetColor() const
 	return color;
 }
 
+
+
+bool Government::IsKnown() const
+{
+	return known;
+}
 
 
 // Get the government's initial disposition toward other governments or
@@ -223,6 +263,25 @@ string Government::GetHail(bool isDisabled) const
 
 
 
+// Get the government's tribute-related messages.
+string Government::GetTributeMessage(int condition) const
+{
+	const vector<const Phrase *> phrases = {
+		tributeRelinquishedMessage,
+		tributeIgnoredMessage,
+		tributeInProgressMessage,
+		tributeBattleMessage,
+		tributeSurrenderedMessage
+	};
+	if(condition < 0 || condition > (int)phrases.size())
+		return phrases[0]->Get();
+	
+	return phrases[condition]->Get();
+}
+
+
+
+
 // Find out if this government speaks a different language.
 const string &Government::Language() const
 {
@@ -239,7 +298,28 @@ const Fleet *Government::RaidFleet() const
 }
 
 
-	
+
+const Fleet *Government::BountyHuntingFleet() const
+{
+	return bountyHuntingFleet;
+}
+
+
+
+const int64_t Government::BountyHunterThreshold() const
+{
+	return bountyHunterThreshold;
+}
+
+
+
+bool Government::IsReputationLocked() const
+{
+	return repLocked;
+}
+
+
+
 // Check if, according to the politics stored by GameData, this government is
 // an enemy of the given government right now.
 bool Government::IsEnemy(const Government *other) const
@@ -267,7 +347,7 @@ bool Government::IsPlayer() const
 
 // Commit the given "offense" against this government (which may not
 // actually consider it to be an offense). This may result in temporary
-// hostilities (if the even type is PROVOKE), or a permanent change to your
+// hostilities (if the event type is PROVOKE), or a permanent change to your
 // reputation.
 void Government::Offend(int eventType, int count) const
 {
@@ -311,4 +391,18 @@ void Government::AddReputation(double value) const
 void Government::SetReputation(double value) const
 {
 	GameData::GetPolitics().SetReputation(this, value);
+}
+
+
+
+double Government::CrewAttack() const
+{
+	return crewAttack;
+}
+
+
+
+double Government::CrewDefense() const
+{
+	return crewDefense;
 }

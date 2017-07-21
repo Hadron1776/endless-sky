@@ -472,10 +472,22 @@ void Planet::Bribe(bool fullAccess) const
 // Demand tribute, and get the planet's response.
 string Planet::DemandTribute(PlayerInfo &player) const
 {
-	if(player.GetCondition("tribute: " + name))
-		return "We are already paying you as much as we can afford.";
+	const int TRIBUTE_IGNORED = 1;
+	const int TRIBUTE_IN_PROGRESS = 2;
+	const int TRIBUTE_BATTLE = 3;
+	const int TRIBUTE_SURRENDERED = 4;
+	map<string, string> subs;
+	subs["<tribute>"] = Format::Number(tribute) + " credits";
+	subs["<first>"] = player.FirstName();
+	subs["<last>"] = player.LastName();
+	subs["<origin>"] = Name();
+	subs["<ship>"] = player.Flagship()->Name();
+	string tributeMessage = "";
 	if(!tribute || !defenseFleet || !defenseCount || player.GetCondition("combat rating") < defenseThreshold)
-		return "Please don't joke about that sort of thing.";
+	{
+		tributeMessage = GetGovernment()->GetTributeMessage(TRIBUTE_IGNORED);
+		return Format::Replace(tributeMessage, subs);
+	}
 	
 	// The player is scary enough for this planet to take notice. Check whether
 	// this is the first demand for tribute, or not.
@@ -484,7 +496,8 @@ string Planet::DemandTribute(PlayerInfo &player) const
 		isDefending = true;
 		GameData::GetPolitics().Offend(defenseFleet->GetGovernment(), ShipEvent::PROVOKE);
 		GameData::GetPolitics().Offend(GetGovernment(), ShipEvent::PROVOKE);
-		return "Our defense fleet will make short work of you.";
+		tributeMessage = GetGovernment()->GetTributeMessage(TRIBUTE_BATTLE);
+		return Format::Replace(tributeMessage, subs);
 	}
 	
 	// The player has already demanded tribute. Have they killed off the entire
@@ -498,11 +511,15 @@ string Planet::DemandTribute(PlayerInfo &player) const
 		}
 	
 	if(!isDefeated)
-		return "We're not ready to surrender yet.";
+	{
+		tributeMessage = GetGovernment()->GetTributeMessage(TRIBUTE_IN_PROGRESS);
+		return Format::Replace(tributeMessage, subs);
+	}
 	
+	tributeMessage = GetGovernment()->GetTributeMessage(TRIBUTE_SURRENDERED);
 	player.Conditions()["tribute: " + name] = tribute;
 	GameData::GetPolitics().DominatePlanet(this);
-	return "We surrender. We will pay you " + Format::Number(tribute) + " credits per day to leave us alone.";
+	return Format::Replace(tributeMessage, subs);
 }
 
 
@@ -520,7 +537,10 @@ void Planet::DeployDefense(list<shared_ptr<Ship>> &ships) const
 	// All defenders get a special personality.
 	Personality defenderPersonality = Personality::Defender();
 	for(auto it = defenders.begin(); it != end; ++it)
+	{
 		(**it).SetPersonality(defenderPersonality);
+		(**it).SetOriginPlanet(this);
+	}
 	
 	++defenseDeployed;
 }

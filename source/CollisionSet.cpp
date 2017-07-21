@@ -156,8 +156,10 @@ Body *CollisionSet::Line(const Projectile &projectile, double *closestHit) const
 			
 			// Check if this projectile can hit this object. If either the
 			// projectile or the object has no government, it will always hit.
+			// "Indiscriminate" projectiles will always hit, as well.
 			const Government *iGov = it->body->GetGovernment();
-			if(it->body != projectile.Target() && iGov && pGov && !iGov->IsEnemy(pGov))
+			if(it->body != projectile.Target() && iGov && pGov && !iGov->IsEnemy(pGov)
+				&& (it->body && !projectile.GetWeapon().IsIndiscriminate()))
 				continue;
 			
 			const Mask &mask = it->body->GetMask(step);

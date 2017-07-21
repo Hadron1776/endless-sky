@@ -107,10 +107,11 @@ void Politics::Offend(const Government *gov, int eventType, int count)
 			// friendly without the player's behavior toward one of them
 			// influencing their reputation with the other.
 			double penalty = (count * weight) * other->PenaltyFor(eventType);
-			if(eventType & ShipEvent::ATROCITY)
+			if((eventType & ShipEvent::ATROCITY) && other->PenaltyFor(eventType) > 0.)
 				reputationWith[other] = min(0., reputationWith[other]);
 			
-			reputationWith[other] -= penalty;
+			if(!other->IsReputationLocked() || (eventType & ShipEvent::ATROCITY))
+				reputationWith[other] -= penalty;
 		}
 	}
 }
@@ -206,54 +207,80 @@ bool Politics::HasDominated(const Planet *planet) const
 // Check to see if the player has done anything they should be fined for.
 string Politics::Fine(PlayerInfo &player, const Government *gov, int scan, const Ship *target, double security)
 {
-	// Do nothing if you have already been fined today, or if you evade
-	// detection.
-	if(fined.count(gov) || Random::Real() > security || !gov->GetFineFraction())
+	// Do nothing if you have already been fined today.
+	if(fined.count(gov) || !gov->GetFineFraction())
 		return "";
+		
+	// Authorities might board your ship based on security.
+	const bool shouldBoard = Random::Real() <= security;
+	const bool isCargoScan = (scan & ShipEvent::SCAN_CARGO);
+	const bool isOutfitScan = (scan & ShipEvent::SCAN_OUTFITS);
 	
 	string reason;
 	int64_t maxFine = 0;
 	for(const shared_ptr<Ship> &ship : player.Ships())
 	{
 		// Check if the ship evades being scanned due to interference plating.
-		if(Random::Real() > 1. / (1. + ship->Attributes().Get("scan interference")))
-			continue;
+		double scanResistance = 1. / (1. + ship->Attributes().Get("scan interference"));
+		
+		// If you are boarded, scan interference no longer helps. 
+		double cargoStealth = 1. / (1. + ship->Attributes().Get("cargo stealth"));
+		const bool planetScan = (!scan && shouldBoard && Random::Real() <= cargoStealth);
 		if(target && target != &*ship)
 			continue;
 		if(ship->GetSystem() != player.GetSystem())
 			continue;
 		
-		if(!scan || (scan & ShipEvent::SCAN_CARGO))
+		if(!scan || isCargoScan)
 		{
-			int64_t fine = ship->Cargo().IllegalCargoFine();
-			if((fine > maxFine && maxFine >= 0) || fine < 0)
+			int64_t fine = 0;
+			if((isCargoScan && (Random::Real() <= scanResistance)) 
+				|| (!scan && shouldBoard && Random::Real() <= cargoStealth))
 			{
-				maxFine = fine;
-				reason = " for carrying illegal cargo.";
-
-				for(const Mission &mission : player.Missions())
+				if(planetScan)
+					fine = player.Cargo().IllegalCargoFine();
+				else
+					fine = ship->Cargo().IllegalCargoFine();
+				if((fine > maxFine && maxFine >= 0) || fine < 0)
 				{
-					// Append the illegalCargoMessage from each applicable mission, if available
-					string illegalCargoMessage = mission.IllegalCargoMessage();
-					if(!illegalCargoMessage.empty())
+					maxFine = fine;
+					reason = " for carrying illegal cargo.";
+
+					for(const Mission &mission : player.Missions())
 					{
-						reason = ".\n\t";
-						reason.append(illegalCargoMessage);
+						// Append the illegalCargoMessage from each applicable mission, if available
+						string illegalCargoMessage = mission.IllegalCargoMessage();
+						if(!illegalCargoMessage.empty())
+						{
+							reason = ".\n\t";
+							reason.append(illegalCargoMessage);
+						}
+						// Fail any missions with illegal cargo and "Stealth" set
+						if(mission.IllegalCargoFine() > 0 && mission.FailIfDiscovered())
+							player.FailMission(mission);
 					}
-					// Fail any missions with illegal cargo and "Stealth" set
-					if(mission.IllegalCargoFine() > 0 && mission.FailIfDiscovered())
-						player.FailMission(mission);
 				}
 			}
 		}
-		if(!scan || (scan & ShipEvent::SCAN_OUTFITS))
+		// If you are scanned, each outfit is rolled for detection. If you are boarded, your cargo hold is only rolled once for detection of contraband.
+		if((!scan && shouldBoard && Random::Real() <= cargoStealth) || (isOutfitScan && Random::Real() <= scanResistance))
 		{
+			int64_t fine = 0;
 			for(const auto &it : ship->Outfits())
 				if(it.second)
 				{
-					int64_t fine = it.first->Get("illegal");
 					if(it.first->Get("atrocity") > 0.)
 						fine = -1;
+					else
+					{
+						int numDetectedOutfits = 0;
+						fine += it.first->IllegalCargoFine();
+						for(int i = 1; i < it.second; ++i)
+							if((isOutfitScan && (Random::Real() <= scanResistance)) || (!scan && shouldBoard))
+								++numDetectedOutfits;							
+								
+						fine += numDetectedOutfits * it.first->AdditionalCargoFine();
+					}
 					if((fine > maxFine && maxFine >= 0) || fine < 0)
 					{
 						maxFine = fine;

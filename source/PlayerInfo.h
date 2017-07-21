@@ -80,6 +80,8 @@ public:
 	
 	// Mark the player as dead, or check if they have died.
 	void Die(bool allShipsDie = false);
+	int GetDeathType();
+	std::string GetDeathString(int deathType);
 	bool IsDead() const;
 	
 	// Get or set the player's name.
@@ -236,6 +238,9 @@ public:
 	void SetMapZoom(int level);
 	// Get the set of collapsed categories for the named panel.
 	std::set<std::string> &Collapsed(const std::string &name);
+	
+	// Get a ship's biosphere compatibility
+	bool IsBiosphereCompatible(Ship *ship);
 	
 	
 private:

@@ -15,8 +15,10 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Audio.h"
 #include "DataNode.h"
 #include "Effect.h"
+#include "Format.h"
 #include "GameData.h"
 #include "Outfit.h"
+#include "Ship.h"
 #include "SpriteSet.h"
 
 using namespace std;
@@ -40,6 +42,22 @@ void Weapon::LoadWeapon(const DataNode &node)
 			isSafe = true;
 		else if(key == "phasing")
 			isPhasing = true;
+		else if(key == "indiscriminate")
+		{
+			isIndiscriminate = true;
+			isSafe = false;
+		}
+		else if(key == "detects")
+			hitsCloakedTargets = true;
+		else if(key == "area")
+			isAreaWeapon = true;
+		else if(key == "target damage bonus")
+			for(const DataNode &grand : child)
+			{
+				if(grand.Token(0) == "minable")
+					miningMultiplier = grand.Value(1);
+				attributeBonusMap[grand.Token(0)] = grand.Value(1);
+			}
 		else if(child.Size() < 2)
 			child.PrintTrace("Skipping weapon attribute with no value specified:");
 		else if(key == "sprite")
@@ -77,6 +95,10 @@ void Weapon::LoadWeapon(const DataNode &node)
 			int count = (child.Size() >= 3) ? child.Value(2) : 1;
 			submunitions[GameData::Outfits().Get(child.Token(1))] += count;
 		}
+		else if(Format::LowerCase(key) == "damage type")
+			damageType = (child.Size() > 1) ? Format::LowerCase(child.Token(1)) : "laser";
+		else if(key == "facing" && child.Size() >= 2)
+			facing = child.Value(1);
 		else
 		{
 			double value = child.Value(1);
@@ -128,6 +150,10 @@ void Weapon::LoadWeapon(const DataNode &node)
 				firingFuel = value;
 			else if(key == "firing heat")
 				firingHeat = value;
+			else if(key == "firing shields")
+				firingShield = value;
+			else if(key == "firing hull")
+				firingHull = value;
 			else if(key == "split range")
 				splitRange = value;
 			else if(key == "trigger radius")
@@ -146,10 +172,16 @@ void Weapon::LoadWeapon(const DataNode &node)
 				damage[DISRUPTION_DAMAGE] = value;
 			else if(key == "slowing damage")
 				damage[SLOWING_DAMAGE] = value;
+			else if(key == "cold damage")
+				damage[COLD_DAMAGE] = value;
 			else if(key == "hit force")
 				hitForce = value;
 			else if(key == "piercing")
 				piercing = max(0., min(1., value));
+			else if(key == "missile evasion")
+				evasion = value;
+			else if(key == "conservation")
+				conservation = value;
 			else
 				child.PrintTrace("Unrecognized weapon attribute: \"" + key + "\":");
 		}
@@ -261,6 +293,25 @@ const map<const Effect *, int> &Weapon::DieEffects() const
 const map<const Outfit *, int> &Weapon::Submunitions() const
 {
 	return submunitions;
+}
+
+
+
+const double Weapon::AttributeBonus(Ship *target) const
+{
+	double highestBonus = 0.;
+	
+	if(attributeBonusMap.empty())
+		return 0.;
+	for(const auto &it : attributeBonusMap)
+	{
+		if(target->Attributes().Get(it.first))
+		{
+			if(it.second > highestBonus)
+				highestBonus = it.second;
+		}
+	}
+	return highestBonus;
 }
 
 

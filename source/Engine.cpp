@@ -59,6 +59,8 @@ namespace {
 			return Radar::PLAYER;
 		if(object.GetPlanet()->CanLand())
 			return Radar::FRIENDLY;
+		if(!object.GetPlanet()->GetGovernment()->IsEnemy())
+			return Radar::UNFRIENDLY;
 		return Radar::HOSTILE;
 	}
 	
@@ -125,7 +127,8 @@ Engine::Engine(PlayerInfo &player)
 	// Add all neighboring systems to the radar.
 	const System *targetSystem = flagship ? flagship->GetTargetSystem() : nullptr;
 	const set<const System *> &links = (flagship && flagship->Attributes().Get("jump drive")) ?
-		player.GetSystem()->Neighbors() : player.GetSystem()->Links();
+		player.GetSystem()->Neighbors() : (flagship && flagship->Attributes().Get("warp drive")) ? 
+		player.GetSystem()->WarpLinks() : player.GetSystem()->Links();
 	for(const System *system : links)
 		radar[calcTickTock].AddPointer(
 			(system == targetSystem) ? Radar::SPECIAL : Radar::INACTIVE,
@@ -195,7 +198,7 @@ void Engine::Place()
 				// Avoid the exploit where the player can wear down an NPC's
 				// crew by attrition over the course of many days.
 				ship->AddCrew(max(0, ship->RequiredCrew() - ship->Crew()));
-				if(!ship->IsDisabled())
+				if(!(ship->IsDisabled() || ship->IsStranded()))
 					ship->Recharge();
 				
 				if(ship->CanBeCarried())
@@ -243,6 +246,17 @@ void Engine::Place()
 		// Any ships in the same system as the player should be either
 		// taking off from the player's planet or nearby.
 		bool isHere = (ship->GetSystem() == player.GetSystem());
+		// Every system should have a star, and different stars provide different
+		// amounts of fuel for the ships
+		ship->SetFuelGeneration(0.);
+		for(const StellarObject &star : ship->GetSystem()->Objects())
+		{
+			if(star.IsStar())
+			{
+				if(star.FuelGeneration())
+					ship->IncFuelGeneration(star.FuelGeneration());
+			}
+		}
 		if(isHere)
 			pos = planetPos;
 		// Check whether this ship should take off with you.
@@ -487,23 +501,44 @@ void Engine::Step(bool isActive)
 	if(flagship && flagship->GetTargetStellar() && !isJumping)
 	{
 		const StellarObject *object = flagship->GetTargetStellar();
-		info.SetString("navigation mode", "Landing on:");
+		info.SetString("navigation mode", (flagship->GetTargetStellar()->GetPlanet()->IsWormhole() && 
+										flagship->GetTargetStellar()->GetPlanet()->IsAccessible(&*flagship)) ? "Travelling to" : "Landing on:");
 		const string &name = object->Name();
-		info.SetString("destination", name);
-		
+		info.SetString("destination", (flagship->GetTargetStellar()->GetPlanet()->IsWormhole() && 
+										flagship->GetTargetStellar()->GetPlanet()->IsAccessible(&*flagship) && 
+										player.HasVisited(flagship->GetTargetStellar()->GetPlanet()->WormholeDestination(flagship->GetSystem()))) ?
+				flagship->GetTargetStellar()->GetPlanet()->WormholeDestination(flagship->GetSystem())->Name() : 
+				flagship->GetTargetStellar()->GetPlanet()->IsWormhole() ? "unknown system" : name);
+
 		targets.push_back({
 			object->Position() - center,
 			Angle(45.),
 			object->Radius(),
-			object->GetPlanet()->CanLand() ? Radar::FRIENDLY : Radar::HOSTILE});
+			object->GetPlanet()->GetGovernment()->IsEnemy() ? Radar::HOSTILE : 
+			object->GetPlanet()->CanLand() ? Radar::FRIENDLY : Radar::UNFRIENDLY});
 	}
 	else if(flagship && flagship->GetTargetSystem())
 	{
-		info.SetString("navigation mode", "Hyperspace:");
-		if(player.HasVisited(flagship->GetTargetSystem()))
-			info.SetString("destination", flagship->GetTargetSystem()->Name());
-		else
-			info.SetString("destination", "unexplored system");
+	    bool hyperSpace = false;
+	    if(flagship->Attributes().Get("hyperdrive") || flagship->Attributes().Get("jump drive") || flagship->Attributes().Get("warp drive"))
+		{
+			for(const System *link : flagship->GetSystem()->Links())
+			{
+				if(flagship->GetTargetSystem() == link)
+				{
+					hyperSpace = true;
+					break;
+				}
+			}
+		}
+		
+		info.SetString("navigation mode", hyperSpace ? "Hyperspace:" : flagship->Attributes().Get("jump drive")
+			 ? "Transpace:" : flagship->Attributes().Get("warp drive") ? "Warp" : "Inaccessible:");
+		if(((flagship->Attributes().Get("hyperdrive") || flagship->Attributes().Get("scram drive")) && hyperSpace) || flagship->Attributes().Get("jump drive")
+			 || flagship->Attributes().Get("warp drive"))
+			info.SetString("destination", player.HasVisited(flagship->GetTargetSystem()) ? flagship->GetTargetSystem()->Name() : "unexplored system");
+        else
+            info.SetString("destination", "Inaccessible");
 	}
 	else
 	{
@@ -533,13 +568,14 @@ void Engine::Step(bool isActive)
 			targetUnit = target->Facing().Unit();
 		info.SetSprite("target sprite", target->GetSprite(), targetUnit, target->GetFrameIndex(step));
 		info.SetString("target name", font.TruncateMiddle(target->Name(), 150));
-		info.SetString("target type", target->ModelName());
+		info.SetString("target type", target->GetGovernment()->IsKnown() ? target->ModelName() : "Unknown ship class");
 		if(!target->GetGovernment())
 			info.SetString("target government", "No Government");
 		else
-			info.SetString("target government", target->GetGovernment()->GetName());
-		info.SetString("mission target", target->GetPersonality().IsTarget() ? "(mission target)" : "");
-		
+			info.SetString("target government", target->GetGovernment()->IsKnown() ? target->GetGovernment()->GetName() : "Unknown government");
+			
+		info.SetString("mission target", target->GetPersonality().IsTarget() ? "(mission target)" : target->OriginPlanet() ? 
+						("(" + target->OriginPlanet()->Name() + " defense fleet)") : "");
 		int targetType = RadarType(*target, step);
 		info.SetOutlineColor(Radar::GetColor(targetType));
 		if(target->GetSystem() == player.GetSystem() && target->IsTargetable())
@@ -849,7 +885,7 @@ void Engine::EnterSystem()
 	
 	Messages::Add("Entering the " + system->Name() + " system on "
 		+ today.ToString() + (system->IsInhabited(flagship) ?
-			"." : ". No inhabited planets detected."));
+			"." : !system->HasLandingTargets(flagship) ? ". No valid landing targets detected." : ". No inhabited planets detected."));
 	
 	for(const StellarObject &object : system->Objects())
 		if(object.GetPlanet())
@@ -858,13 +894,22 @@ void Engine::EnterSystem()
 	GameData::SetDate(today);
 	GameData::StepEconomy();
 	// SetDate() clears any bribes from yesterday, so restore any auto-clearance.
+	// It also clears any provocation messages, so restore those too.
 	for(const Mission &mission : player.Missions())
+	{
 		if(mission.ClearanceMessage() == "auto")
 		{
 			mission.Destination()->Bribe(mission.HasFullClearance());
 			for(const Planet *planet : mission.Stopovers())
 				planet->Bribe(mission.HasFullClearance());
 		}
+		for(const Government *gov : mission.ProvokedGovernments())
+		{
+			if(!gov->IsEnemy())
+				gov->Offend(ShipEvent::PROVOKE);
+		}
+	}
+	
 	
 	asteroids.Clear();
 	for(const System::Asteroid &a : system->Asteroids())
@@ -1156,6 +1201,16 @@ void Engine::CalculateStep()
 				break;
 			}
 		}
+		for(Body *body : cloakedCollisions.Circle((*it)->Position(), 5.))
+		{
+			Ship *ship = reinterpret_cast<Ship *>(body);
+			if((!ship->CannotAct() || ship->Cloaking()) && ship != (*it)->Source() && ship->Cargo().Free() >= (*it)->UnitSize()
+				&& ship->Attributes().Get("stealth harvest"))
+			{
+				collector = ship;
+				break;
+			}
+		}
 		if(collector)
 		{
 			string name;
@@ -1312,7 +1367,7 @@ void Engine::CalculateStep()
 		{
 			// Left click: has your flagship select or board the target.
 			player.Flagship()->SetTargetShip(clickTarget);
-			if(clickTarget.get() == previousTarget)
+			if((clickTarget.get() == previousTarget) && clickTarget.get()->IsDisabled())
 				clickCommands |= Command::BOARD;
 			else if(clickTarget->GetGovernment()->IsPlayer())
 				player.SelectShip(clickTarget.get(), hasShift);
@@ -1346,8 +1401,8 @@ void Engine::CalculateStep()
 		shared_ptr<Ship> hit;
 		const Government *gov = projectile.GetGovernment();
 		
-		// If this "projectile" is a ship explosion, it always explodes.
-		if(!gov)
+		// If this "projectile" is a ship explosion or area weapon, it always explodes.
+		if(!gov || projectile.GetWeapon().IsAreaWeapon())
 			closestHit = 0.;
 		else if(projectile.GetWeapon().IsPhasing() && projectile.Target())
 		{
@@ -1367,21 +1422,36 @@ void Engine::CalculateStep()
 		}
 		else
 		{
+			bool hitsCloakedTargets = projectile.GetWeapon().HitsCloakedTargets();
 			double triggerRadius = projectile.GetWeapon().TriggerRadius();
 			if(triggerRadius)
 			{
-				// Check if something triggered this projectile.
+				// Check if something triggered this projectile. Weapons that "detect" can hit cloaked targets as well. 
+				// "Indiscriminate" weapons will trigger on anything, friend or foe.
 				for(const Body *body : shipCollisions.Circle(projectile.Position(), triggerRadius))
-					if(body == projectile.Target() || gov->IsEnemy(body->GetGovernment()))
+					if(body == projectile.Target() || gov->IsEnemy(body->GetGovernment()) || (body && projectile.GetWeapon().IsIndiscriminate()))
 					{
 						closestHit = 0.;
 						break;
 					}
+				if(hitsCloakedTargets)
+				{
+					for(const Body *body : cloakedCollisions.Circle(projectile.Position(), triggerRadius))
+						if(body == projectile.Target() || gov->IsEnemy(body->GetGovernment()) || (body && projectile.GetWeapon().IsIndiscriminate()))
+						{
+							closestHit = 0.;
+							break;
+						}
+				}
 			}
 			if(closestHit > 0.)
 			{
-				// If the projectile was not triggered, check if it hit a ship.
-				Ship *ship = reinterpret_cast<Ship *>(shipCollisions.Line(projectile, &closestHit));
+				// If the projectile was not triggered, check if it hit a ship. Projectiles that "detect" can hit cloaked ships,
+				// even though the ship firing them can't target them.
+				Ship *ship = nullptr;
+				ship = reinterpret_cast<Ship *>(shipCollisions.Line(projectile, &closestHit));
+				if(!ship && hitsCloakedTargets)
+					ship = reinterpret_cast<Ship *>(cloakedCollisions.Line(projectile, &closestHit));
 				if(ship)
 				{
 					hit = ship->shared_from_this();
@@ -1411,16 +1481,23 @@ void Engine::CalculateStep()
 			// If this projectile has a blast radius, find all ships within its
 			// radius. Otherwise, only one is damaged.
 			double blastRadius = projectile.GetWeapon().BlastRadius();
+			bool isAreaWeapon = projectile.GetWeapon().IsAreaWeapon();
 			bool isSafe = projectile.GetWeapon().IsSafe();
-			if(blastRadius)
+			Point hitPos = projectile.Position() + closestHit * projectile.Velocity();
+			
+			// An "Area" weapon's "blast radius" is equal to its range
+			if(blastRadius || isAreaWeapon)
 			{
 				// Even friendly ships can be hit by the blast, unless it is a
 				// "safe" weapon.
-				Point hitPos = projectile.Position() + closestHit * projectile.Velocity();
-				for(Body *body : shipCollisions.Circle(hitPos, blastRadius))
+				for(Body *body : shipCollisions.Circle(hitPos, isAreaWeapon ? projectile.GetWeapon().Range() : blastRadius))
 				{
 					if(isSafe && projectile.Target() != body
 							&& !projectile.GetGovernment()->IsEnemy(body->GetGovernment()))
+						continue;
+					
+					// "Area" weapons do not hit the ship firing them
+					if(isAreaWeapon && projectile.Parent() && body == projectile.Parent())
 						continue;
 					
 					shared_ptr<Ship> ship = reinterpret_cast<Ship *>(body)->shared_from_this();
@@ -1430,12 +1507,15 @@ void Engine::CalculateStep()
 							projectile.GetGovernment(), ship, eventType);
 				}
 				// Cloaked ships can be hit be a blast, too.
-				for(Body *body : cloakedCollisions.Circle(hitPos, blastRadius))
+				for(Body *body : cloakedCollisions.Circle(hitPos, isAreaWeapon ? projectile.GetWeapon().Range() : blastRadius))
 				{
 					if(isSafe && projectile.Target() != body
 							&& !projectile.GetGovernment()->IsEnemy(body->GetGovernment()))
 						continue;
 					
+					if(isAreaWeapon && projectile.Parent() && body == projectile.Parent())
+						continue;
+
 					shared_ptr<Ship> ship = reinterpret_cast<Ship *>(body)->shared_from_this();
 					int eventType = ship->TakeDamage(projectile, ship != hit);
 					if(eventType)
@@ -1531,7 +1611,7 @@ void Engine::CalculateStep()
 			{
 				const Person &person = it.second;
 				sum -= person.Frequency(player.GetSystem());
-				if(sum < 0)
+				if((sum < 0) && !person.IsDestroyed())
 				{
 					shared_ptr<Ship> ship = person.GetShip();
 					ship->Recharge();
@@ -1550,7 +1630,7 @@ void Engine::CalculateStep()
 	}
 	
 	// Occasionally have some ship hail you.
-	if(!Random::Int(600) && !player.IsDead() && !ships.empty())
+	if(!Random::Int(600) && !player.IsDead() && !ships.empty() && player.Flagship()->Cloaking() < 1.)
 	{
 		shared_ptr<Ship> source;
 		unsigned i = Random::Int(ships.size());
@@ -1563,6 +1643,7 @@ void Engine::CalculateStep()
 		if(source->GetGovernment() && !source->GetGovernment()->IsPlayer()
 				&& !source->IsDisabled() && source->Crew() && source->Cloaking() < 1.)
 		{
+			bool knowsGovernment = (source && source->GetGovernment() && source->GetGovernment()->IsKnown());
 			string message = source->GetHail();
 			if(!message.empty() && source->GetSystem() == player.GetSystem())
 			{
@@ -1570,9 +1651,16 @@ void Engine::CalculateStep()
 				string tag;
 				const string &gov = source->GetGovernment()->GetName();
 				if(!source->Name().empty())
-					tag = gov + " " + source->Noun() + " \"" + source->Name() + "\": ";
+				{
+					tag = (knowsGovernment ? gov : string("Unknown")) + " " + source->Noun();
+					if(knowsGovernment)
+						tag += " \"" + source->Name() + "\": ";
+					else
+						tag += ": ";
+				}
 				else
-					tag = source->ModelName() + " (" + gov + "): ";
+					tag = (knowsGovernment ? source->ModelName() : ("Unknown " + source->Noun())) + 
+					" (" + (knowsGovernment ? gov : string("Unknown government")) + "): ";
 				Messages::Add(tag + message);
 			}
 		}

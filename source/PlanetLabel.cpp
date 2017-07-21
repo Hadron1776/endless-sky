@@ -47,7 +47,7 @@ PlanetLabel::PlanetLabel(const Point &position, const StellarObject &object, con
 	name = planet.Name();
 	if(planet.IsWormhole())
 		color = Color(.8, .3, 1., 1.);
-	else if(planet.GetGovernment())
+	else if(planet.GetGovernment() && planet.GetGovernment()->IsKnown())
 	{
 		government = "(" + planet.GetGovernment()->GetName() + ")";
 		if(planet.CanLand())
@@ -61,7 +61,7 @@ PlanetLabel::PlanetLabel(const Point &position, const StellarObject &object, con
 	else
 	{
 		color = Color(.3, .3, .3, 1.);
-		government = "(No government)";
+		government = planet.GetGovernment()->IsKnown() ? "(No government)" : "(Unknown government)";
 	}
 	double alpha = min(.5, max(0., .6 - (position.Length() - radius) * .001 * zoom));
 	color = Color(color.Get()[0] * alpha, color.Get()[1] * alpha, color.Get()[2] * alpha, 0.);

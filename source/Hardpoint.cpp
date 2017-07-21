@@ -213,7 +213,7 @@ void Hardpoint::Fire(Ship &ship, list<Projectile> &projectiles, list<Effect> &ef
 
 
 // Fire an anti-missile. Returns true if the missile should be killed.
-bool Hardpoint::FireAntiMissile(Ship &ship, const Projectile &projectile, list<Effect> &effects)
+bool Hardpoint::FireAntiMissile(Ship &ship, Projectile &projectile, list<Effect> &effects)
 {
 	// Make sure this hardpoint really is an anti-missile.
 	int strength = outfit->AntiMissile();
@@ -246,8 +246,10 @@ bool Hardpoint::FireAntiMissile(Ship &ship, const Projectile &projectile, list<E
 	// Update the reload and burst counters, and expend ammunition if applicable.
 	Fire(ship, start, aim);
 	
+	if(Random::Real() > projectile.Evasion())
+		projectile.RemoveMissileStrength(strength);
 	// Check whether the missile was destroyed.
-	return (Random::Int(strength) > Random::Int(projectile.MissileStrength()));
+	return (projectile.MissileStrengthRemaining() <= 0.);
 }
 
 
@@ -269,10 +271,10 @@ void Hardpoint::Install(const Outfit *outfit)
 		burstCount = outfit->BurstCount();
 		
 		// For fixed weapons, apply "gun harmonization," pointing them slightly
-		// inward so the projectiles will converge. For turrets, start them out
+		// inward so the projectiles will converge. (This can be overwritten per weapon) For turrets, start them out
 		// pointing outward from the center of the ship.
 		if(!isTurret)
-			angle = HarmonizedAngle();
+			angle = HarmonizedAngle() + outfit->Facing();
 		else
 			angle = Angle(point);
 	}
