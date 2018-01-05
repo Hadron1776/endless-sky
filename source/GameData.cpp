@@ -966,7 +966,7 @@ void GameData::LoadFile(const string &path, bool debugMode)
 				{
 					if(node.Token(1) == "outfit")
 						outfitCategories.push_back(child.Token(0));
-					else if(node.Token(1) == "ship" && (child.Token(0) != "Fighter" && child.Token(0) != "Drone"))
+					else if(node.Token(1) == "ship" && child.Token(0) != "Fighter" && child.Token(0) != "Drone")
 						shipCategories.push_back(child.Token(0));
 				}
 			}
