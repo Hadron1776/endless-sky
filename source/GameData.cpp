@@ -106,7 +106,8 @@ namespace {
 	map<const Sprite *, double> solarWind;
 	Set<News> news;
 	map<string, vector<string>> ratings;
-	vector<string> outfitCategories;
+	vector<string> outfitCategories = {
+		"Ammunition"};
 	vector<string> shipCategories = {
 	"Fighter",
 	"Drone"};
@@ -964,7 +965,7 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			{
 				for(const DataNode &child : node)
 				{
-					if(node.Token(1) == "outfit")
+					if(node.Token(1) == "outfit" && child.Token(0) != "Ammunition")
 						outfitCategories.push_back(child.Token(0));
 					else if(node.Token(1) == "ship" && (child.Token(0) != "Fighter" && child.Token(0) != "Drone"))
 						shipCategories.push_back(child.Token(0));
