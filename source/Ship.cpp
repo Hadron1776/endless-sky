@@ -2903,7 +2903,7 @@ double Ship::MinimumHull() const
 	{
 		double maximumHull = attributes.Get("hull");
 		if(attributes.Get("disable threshold"))
-			minimumHull = (attributes.Get("disable threshold") * maximumHull);
+			minimumHull = (min(1., attributes.Get("disable threshold")) * maximumHull);
 		else
 			minimumHull = max(.20 * maximumHull, min(.50 * maximumHull, 400.));
 	}
