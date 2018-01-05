@@ -116,6 +116,8 @@ namespace {
 	SpriteQueue spriteQueue;
 	
 	vector<string> sources;
+	vector<string> outfitCategories;
+	vector<string> shipCategories;
 	map<const Sprite *, shared_ptr<ImageSet>> deferred;
 	map<const Sprite *, int> preloaded;
 	
@@ -760,6 +762,13 @@ const string &GameData::Rating(const string &type, int level)
 
 
 
+const vector<string> &GameData::Category(const string &type)
+{
+	return (type == "outfit" ? outfitCategories : shipCategories);
+}
+
+
+
 const StarField &GameData::Background()
 {
 	return background;
@@ -945,6 +954,14 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			list.clear();
 			for(const DataNode &child : node)
 				list.push_back(child.Token(0));
+		}
+		else if(key == "categories" && node.Size() >= 2)
+		{
+			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
+			{
+				for(const DataNode &child : node)
+					((node.Token(1) == "outfit") ? outfitCategories : shipCategories).push_back(child.Token(0));
+			}
 		}
 		else if((key == "tip" || key == "help") && node.Size() >= 2)
 		{
