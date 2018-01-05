@@ -2897,11 +2897,17 @@ void Ship::RemoveEscort(const Ship &ship)
 
 double Ship::MinimumHull() const
 {
-	if(neverDisabled)
-		return 0.;
+	double minimumHull = 0.;
 	
-	double maximumHull = attributes.Get("hull");
-	return max(.20 * maximumHull, min(.50 * maximumHull, 400.));
+	if(!neverDisabled)
+	{
+		double maximumHull = attributes.Get("hull");
+		if(attributes.Get("disable threshold"))
+			minimumHull = (attributes.Get("disable threshold") * maximumHull);
+		else
+			minimumHull = max(.20 * maximumHull, min(.50 * maximumHull, 400.));
+	}
+	return minimumHull;
 }
 
 
