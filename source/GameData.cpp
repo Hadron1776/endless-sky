@@ -106,6 +106,10 @@ namespace {
 	map<const Sprite *, double> solarWind;
 	Set<News> news;
 	map<string, vector<string>> ratings;
+	vector<string> outfitCategories;
+	vector<string> shipCategories = {
+	"Fighter",
+	"Drone"};
 	
 	StarField background;
 	
@@ -760,6 +764,14 @@ const string &GameData::Rating(const string &type, int level)
 
 
 
+// Store categories for outfits and ships
+const vector<string> &GameData::Categories(const string &type)
+{
+	return (type == "outfit" ? outfitCategories : shipCategories);
+}
+
+
+
 const StarField &GameData::Background()
 {
 	return background;
@@ -945,6 +957,19 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			list.clear();
 			for(const DataNode &child : node)
 				list.push_back(child.Token(0));
+		}
+		else if(key == "categories" && node.Size() >= 2)
+		{
+			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
+			{
+				for(const DataNode &child : node)
+				{
+					if(node.Token(1) == "outfit")
+						outfitCategories.push_back(child.Token(0));
+					else if(node.Token(1) == "ship" && (child.Token(0) != "Fighter" && child.Token(0) != "Drone"))
+						shipCategories.push_back(child.Token(0));
+				}
+			}
 		}
 		else if((key == "tip" || key == "help") && node.Size() >= 2)
 		{
