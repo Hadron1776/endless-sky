@@ -75,20 +75,6 @@ namespace {
 	}
 }
 
-const vector<string> Ship::CATEGORIES = {
-	"Transport",
-	"Light Freighter",
-	"Heavy Freighter",
-	"Interceptor",
-	"Light Warship",
-	"Medium Warship",
-	"Heavy Warship",
-	"Fighter",
-	"Drone"
-};
-
-
-
 void Ship::Load(const DataNode &node)
 {
 	if(node.Size() >= 2)
