@@ -18,7 +18,6 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "GameData.h"
 #include "SpriteSet.h"
 
-#include <algorithm>
 #include <cstring>
 #include <cmath>
 
