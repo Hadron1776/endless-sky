@@ -109,8 +109,6 @@ namespace {
 	
 	vector<string> outfitCategories;
 	vector<string> shipCategories;
-	set<string> outfitCatSet;
-	set<string> shipCatSet;
 	
 	StarField background;
 	
@@ -219,11 +217,13 @@ void GameData::BeginLoad(const char * const *argv)
 // Check for objects that are referred to but never defined.
 void GameData::CheckReferences()
 {
+	set<string> knownOutfitCategories(outfitCategories.begin(), outfitCategories.end());
+	set<string> knownShipCategories(shipCategories.begin(), shipCategories.end());
 	for(const string &carried : {"Fighter", "Drone"})
-		if(!shipCatSet.count(carried))
+		if(!knownShipCategories.count(carried))
 		{
 			shipCategories.push_back(carried);
-			shipCatSet.emplace(carried);
+			knownShipCategories.emplace(carried);
 		}
 	for(const auto &it : conversations)
 		if(it.second.IsEmpty())
@@ -251,7 +251,7 @@ void GameData::CheckReferences()
 		if(it.second.Name().empty())
 			Files::LogError("Warning: outfit \"" + it.first + "\" is referred to, but never defined.");
 		if(!it.second.Category().empty()
-			&& !outfitCatSet.count(it.second.Category()))
+			&& !knownOutfitCategories.count(it.second.Category()))
 			Files::LogError("Warning: outfit \"" + it.first + "\" has category \"" + it.second.Category() + "\", which is not among known outfit categories.");
 	}
 	for(const auto &it : phrases)
@@ -265,7 +265,7 @@ void GameData::CheckReferences()
 		if(it.second.ModelName().empty())
 			Files::LogError("Warning: ship \"" + it.first + "\" is referred to, but never defined.");
 		if(!it.second.Attributes().Category().empty()
-			&& !shipCatSet.count(it.second.Attributes().Category()))
+			&& !knownShipCategories.count(it.second.Attributes().Category()))
 			Files::LogError("Warning: ship \"" + it.first + "\" has category \"" + it.second.Attributes().Category() + "\", which is not among known ship categories.");
 	}
 	for(const auto &it : systems)
@@ -980,13 +980,9 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
 			{
 				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
-				set<string> &categorySet = (node.Token(1) == "outfit" ? outfitCatSet : shipCatSet);
 				for(const DataNode &child : node)
-					if(!categorySet.count(child.Token(0)))
-					{
+					if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
 						categoryList.push_back(child.Token(0));
-						categorySet.emplace(child.Token(0));
-					}
 			}
 			else
 				node.PrintTrace("Skipping unsupported use of \"categories\" object:");
