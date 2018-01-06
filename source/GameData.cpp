@@ -765,7 +765,7 @@ const string &GameData::Rating(const string &type, int level)
 
 
 
-// Store categories for outfits and ships
+// Get player-defined categories for outfits and ships.
 const vector<string> &GameData::Categories(const string &type)
 {
 	return (type == "outfit" ? outfitCategories : shipCategories);
@@ -959,14 +959,19 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			for(const DataNode &child : node)
 				list.push_back(child.Token(0));
 		}
-		else if(key == "categories" && node.Size() >= 2 && (node.Token(1) == "outfit" || node.Token(1) == "ship"))
+		else if(key == "categories" && node.Size() >= 2)
 		{
-			vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
-			for(const DataNode &child : node)
+			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
 			{
-				if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
-					categoryList.push_back(child.Token(0));
+				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
+				for(const DataNode &child : node)
+				{
+					if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
+						categoryList.push_back(child.Token(0));
+				}
 			}
+			else
+				node.PrintTrace("Skipping unsupported use of categories object:");
 		}
 		else if((key == "tip" || key == "help") && node.Size() >= 2)
 		{
