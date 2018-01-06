@@ -18,6 +18,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "GameData.h"
 #include "SpriteSet.h"
 
+#include <algorithm>
 #include <cstring>
 #include <cmath>
 
@@ -38,7 +39,14 @@ void Outfit::Load(const DataNode &node)
 	for(const DataNode &child : node)
 	{
 		if(child.Token(0) == "category" && child.Size() >= 2)
+		{
 			category = child.Token(1);
+			const vector<string> &outfitCategoryList = GameData::Categories("outfit");
+			const vector<string> &shipCategoryList = GameData::Categories("ship");
+			if(find(outfitCategoryList.begin(), outfitCategoryList.end(), category) == outfitCategoryList.end()
+				&& find(shipCategoryList.begin(), shipCategoryList.end(), category) == shipCategoryList.end())
+				child.PrintTrace("Object has unrecognized category:");
+		}
 		else if(child.Token(0) == "plural" && child.Size() >= 2)
 			pluralName = child.Token(1);
 		else if(child.Token(0) == "flare sprite" && child.Size() >= 2)
