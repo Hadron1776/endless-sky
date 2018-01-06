@@ -75,8 +75,6 @@ namespace {
 	}
 }
 
-
-
 void Ship::Load(const DataNode &node)
 {
 	if(node.Size() >= 2)
