@@ -106,6 +106,7 @@ namespace {
 	map<const Sprite *, double> solarWind;
 	Set<News> news;
 	map<string, vector<string>> ratings;
+	
 	vector<string> outfitCategories;
 	vector<string> shipCategories;
 	StarField background;
@@ -969,7 +970,7 @@ void GameData::LoadFile(const string &path, bool debugMode)
 						categoryList.push_back(child.Token(0));
 			}
 			else
-				node.PrintTrace("Skipping unsupported use of categories object:");
+				node.PrintTrace("Skipping unsupported use of \"categories\" object:");
 		}
 		else if((key == "tip" || key == "help") && node.Size() >= 2)
 		{
