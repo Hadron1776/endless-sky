@@ -109,6 +109,8 @@ namespace {
 	
 	vector<string> outfitCategories;
 	vector<string> shipCategories;
+	set<string> outfitCatSet;
+	set<string> shipCatSet;
 	
 	StarField background;
 	
@@ -217,10 +219,12 @@ void GameData::BeginLoad(const char * const *argv)
 // Check for objects that are referred to but never defined.
 void GameData::CheckReferences()
 {
-	if(find(shipCategories.begin(), shipCategories.end(), "Fighter") == shipCategories.end())
-		shipCategories.push_back("Fighter");
-	if(find(shipCategories.begin(), shipCategories.end(), "Drone") == shipCategories.end())
-		shipCategories.push_back("Drone");
+	for(const string &carried : {"Fighter", "Drone"})
+		if(!shipCatSet.count(carried))
+		{
+			shipCategories.push_back(carried);
+			shipCatSet.emplace(carried);
+		}
 	for(const auto &it : conversations)
 		if(it.second.IsEmpty())
 			Files::LogError("Warning: conversation \"" + it.first + "\" is referred to, but never defined.");
@@ -247,8 +251,8 @@ void GameData::CheckReferences()
 		if(it.second.Name().empty())
 			Files::LogError("Warning: outfit \"" + it.first + "\" is referred to, but never defined.");
 		if(!it.second.Category().empty()
-			&& find(outfitCategories.begin(), outfitCategories.end(), it.second.Category()) == outfitCategories.end())
-			Files::LogError("Warning: outfit \"" + it.first + "\" has an undefined category.");
+			&& !outfitCatSet.count(it.second.Category()))
+			Files::LogError("Warning: outfit \"" + it.first + "\" has category \"" + it.second.Category() + "\", which is not among known outfit categories.");
 	}
 	for(const auto &it : phrases)
 		if(it.second.Name().empty())
@@ -261,8 +265,8 @@ void GameData::CheckReferences()
 		if(it.second.ModelName().empty())
 			Files::LogError("Warning: ship \"" + it.first + "\" is referred to, but never defined.");
 		if(!it.second.Attributes().Category().empty()
-			&& find(shipCategories.begin(), shipCategories.end(), it.second.Attributes().Category()) == shipCategories.end())
-			Files::LogError("Warning: ship \"" + it.first + "\" has an undefined category.");
+			&& !shipCatSet.count(it.second.Attributes().Category()))
+			Files::LogError("Warning: ship \"" + it.first + "\" has category \"" + it.second.Attributes().Category() + "\", which is not among known ship categories.");
 	}
 	for(const auto &it : systems)
 		if(it.second.Name().empty())
@@ -976,9 +980,13 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
 			{
 				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
+				set<string> &categorySet = (node.Token(1) == "outfit" ? outfitCatSet : shipCatSet);
 				for(const DataNode &child : node)
-					if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
+					if(!categorySet.count(child.Token(0)))
+					{
 						categoryList.push_back(child.Token(0));
+						categorySet.emplace(child.Token(0));
+					}
 			}
 			else
 				node.PrintTrace("Skipping unsupported use of \"categories\" object:");
