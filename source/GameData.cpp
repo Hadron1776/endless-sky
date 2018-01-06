@@ -243,8 +243,13 @@ void GameData::CheckReferences()
 		if(it.second.Name().empty())
 			Files::LogError("Warning: mission \"" + it.first + "\" is referred to, but never defined.");
 	for(const auto &it : outfits)
+	{
 		if(it.second.Name().empty())
 			Files::LogError("Warning: outfit \"" + it.first + "\" is referred to, but never defined.");
+		if(!it.second.Category().empty()
+			&& find(outfitCategories.begin(), outfitCategories.end(), it.second.Category()) == outfitCategories.end())
+			Files::LogError("Warning: outfit \"" + it.first + "\" has an undefined category.");
+	}
 	for(const auto &it : phrases)
 		if(it.second.Name().empty())
 			Files::LogError("Warning: phrase \"" + it.first + "\" is referred to, but never defined.");
@@ -262,10 +267,6 @@ void GameData::CheckReferences()
 	for(const auto &it : systems)
 		if(it.second.Name().empty())
 			Files::LogError("Warning: system \"" + it.first + "\" is referred to, but never defined.");
-	for(const auto &it : outfits)
-		if(!it.second.Category().empty()
-			&& find(outfitCategories.begin(), outfitCategories.end(), it.second.Category()) == outfitCategories.end())
-			Files::LogError("Warning: outfit \"" + it.first + "\" has an undefined category.");
 }
 
 
