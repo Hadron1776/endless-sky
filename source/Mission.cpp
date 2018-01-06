@@ -65,6 +65,14 @@ namespace {
 
 
 
+// Construct and Load() at the same time.
+Mission::Mission(const DataNode &node)
+{
+	Load(node);
+}
+
+
+
 // Load a mission, either from the game data or from a saved game.
 void Mission::Load(const DataNode &node)
 {
@@ -183,10 +191,7 @@ void Mission::Load(const DataNode &node)
 			set.insert(GameData::Systems().Get(child.Token(1)));
 		}
 		else if(child.Token(0) == "waypoint" && child.HasChildren())
-		{
-			waypointFilters.emplace_back();
-			waypointFilters.back().Load(child);
-		}
+			waypointFilters.emplace_back(child);
 		else if(child.Token(0) == "stopover" && child.Size() >= 2)
 		{
 			set<const Planet *> &set = (child.Size() >= 3 && child.Token(2) == "visited")
@@ -194,15 +199,9 @@ void Mission::Load(const DataNode &node)
 			set.insert(GameData::Planets().Get(child.Token(1)));
 		}
 		else if(child.Token(0) == "stopover" && child.HasChildren())
-		{
-			stopoverFilters.emplace_back();
-			stopoverFilters.back().Load(child);
-		}
+			stopoverFilters.emplace_back(child);
 		else if(child.Token(0) == "npc")
-		{
-			npcs.push_back(NPC());
-			npcs.back().Load(child);
-		}
+			npcs.emplace_back(child);
 		else if(child.Token(0) == "on" && child.Size() >= 2 && child.Token(1) == "enter")
 		{
 			// "on enter" nodes may either name a specific system or use a LocationFilter
@@ -213,10 +212,7 @@ void Mission::Load(const DataNode &node)
 				action.Load(child, name);
 			}
 			else
-			{
-				genericOnEnter.emplace_back();
-				genericOnEnter.back().Load(child, name);
-			}
+				genericOnEnter.emplace_back(child, name);
 		}
 		else if(child.Token(0) == "on" && child.Size() >= 2)
 		{
@@ -1083,20 +1079,19 @@ Mission Mission::Instantiate(const PlayerInfo &player) const
 void Mission::Enter(const System *system, PlayerInfo &player, UI *ui)
 {
 	const auto &eit = onEnter.find(system);
-	if(eit != onEnter.end() && !didEnter.count(&eit->second)
-			&& eit->second.CanBeDone(player))
+	if(eit != onEnter.end() && !didEnter.count(&eit->second) && eit->second.CanBeDone(player))
 	{
 		eit->second.Do(player, ui);
 		didEnter.insert(&eit->second);
 	}
 	// If no specific `on enter` was performed, try matching to a generic "on enter,"
 	// which may use a LocationFilter to govern which systems it can be performed in.
-	else if(!genericOnEnter.empty())
-		for(auto it = genericOnEnter.begin(); it != genericOnEnter.end(); ++it)
-			if(!didEnter.count(&*it) && (*it).CanBeDone(player))
+	else
+		for(MissionAction &action : genericOnEnter)
+			if(!didEnter.count(&action) && action.CanBeDone(player))
 			{
-				(*it).Do(player, ui);
-				didEnter.insert(&*it);
+				action.Do(player, ui);
+				didEnter.insert(&action);
 				break;
 			}
 }
