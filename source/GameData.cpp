@@ -107,10 +107,7 @@ namespace {
 	Set<News> news;
 	map<string, vector<string>> ratings;
 	vector<string> outfitCategories;
-	vector<string> shipCategories = {
-	"Fighter",
-	"Drone"};
-	
+	vector<string> shipCategories;
 	StarField background;
 	
 	map<string, string> tooltips;
@@ -337,6 +334,10 @@ void GameData::Preload(const Sprite *sprite)
 
 void GameData::FinishLoading()
 {
+	if(find(shipCategories.begin(), shipCategories.end(), "Fighter") == shipCategories.end())
+		shipCategories.push_back("Fighter");
+	if(find(shipCategories.begin(), shipCategories.end(), "Drone") == shipCategories.end())
+		shipCategories.push_back("Drone");
 	spriteQueue.Finish();
 }
 
@@ -958,17 +959,13 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			for(const DataNode &child : node)
 				list.push_back(child.Token(0));
 		}
-		else if(key == "categories" && node.Size() >= 2)
+		else if(key == "categories" && node.Size() >= 2 && (node.Token(1) == "outfit" || node.Token(1) == "ship"))
 		{
-			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
+			vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
+			for(const DataNode &child : node)
 			{
-				for(const DataNode &child : node)
-				{
-					if(node.Token(1) == "outfit")
-						outfitCategories.push_back(child.Token(0));
-					else if(node.Token(1) == "ship" && child.Token(0) != "Fighter" && child.Token(0) != "Drone")
-						shipCategories.push_back(child.Token(0));
-				}
+				if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
+					categoryList.push_back(child.Token(0));
 			}
 		}
 		else if((key == "tip" || key == "help") && node.Size() >= 2)
