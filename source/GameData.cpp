@@ -109,8 +109,6 @@ namespace {
 	
 	vector<string> outfitCategories;
 	vector<string> shipCategories;
-	set<string> outfitCatSet;
-	set<string> shipCatSet;
 	
 	StarField background;
 	
@@ -219,12 +217,18 @@ void GameData::BeginLoad(const char * const *argv)
 // Check for objects that are referred to but never defined.
 void GameData::CheckReferences()
 {
+	set<string> outfitCatSet;
+	set<string> shipCatSet;
 	for(const string &carried : {"Fighter", "Drone"})
 		if(!shipCatSet.count(carried))
 		{
 			shipCategories.push_back(carried);
 			shipCatSet.emplace(carried);
 		}
+	for(auto &it : outfitCategories)
+		outfitCatSet.emplace(it);
+	for(auto &it : shipCategories)
+		shipCatSet.emplace(it);
 	for(const auto &it : conversations)
 		if(it.second.IsEmpty())
 			Files::LogError("Warning: conversation \"" + it.first + "\" is referred to, but never defined.");
@@ -980,13 +984,9 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
 			{
 				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
-				set<string> &categorySet = (node.Token(1) == "outfit" ? outfitCatSet : shipCatSet);
 				for(const DataNode &child : node)
-					if(!categorySet.count(child.Token(0)))
-					{
+					if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
 						categoryList.push_back(child.Token(0));
-						categorySet.emplace(child.Token(0));
-					}
 			}
 			else
 				node.PrintTrace("Skipping unsupported use of \"categories\" object:");
