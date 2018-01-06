@@ -109,6 +109,7 @@ namespace {
 	
 	vector<string> outfitCategories;
 	vector<string> shipCategories;
+	
 	StarField background;
 	
 	map<string, string> tooltips;
