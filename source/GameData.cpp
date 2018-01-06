@@ -250,8 +250,7 @@ void GameData::CheckReferences()
 	{
 		if(it.second.Name().empty())
 			Files::LogError("Warning: outfit \"" + it.first + "\" is referred to, but never defined.");
-		if(!it.second.Category().empty()
-			&& !knownOutfitCategories.count(it.second.Category()))
+		if(!it.second.Category().empty() && !knownOutfitCategories.count(it.second.Category()))
 			Files::LogError("Warning: outfit \"" + it.first + "\" has category \"" + it.second.Category() + "\", which is not among known outfit categories.");
 	}
 	for(const auto &it : phrases)
@@ -264,8 +263,7 @@ void GameData::CheckReferences()
 	{
 		if(it.second.ModelName().empty())
 			Files::LogError("Warning: ship \"" + it.first + "\" is referred to, but never defined.");
-		if(!it.second.Attributes().Category().empty()
-			&& !knownShipCategories.count(it.second.Attributes().Category()))
+		if(!it.second.Attributes().Category().empty() && !knownShipCategories.count(it.second.Attributes().Category()))
 			Files::LogError("Warning: ship \"" + it.first + "\" has category \"" + it.second.Attributes().Category() + "\", which is not among known ship categories.");
 	}
 	for(const auto &it : systems)
