@@ -248,11 +248,20 @@ void GameData::CheckReferences()
 		if(it.second.Name().empty())
 			Files::LogError("Warning: planet \"" + it.first + "\" is referred to, but never defined.");
 	for(const auto &it : ships)
+	{
 		if(it.second.ModelName().empty())
 			Files::LogError("Warning: ship \"" + it.first + "\" is referred to, but never defined.");
+		if(!it.second.Attributes().Category().empty()
+			&& find(shipCategories.begin(), shipCategories.end(), it.second.Attributes().Category()) == shipCategories.end())
+			Files::LogError("Warning: ship \"" + it.first + "\" has an undefined category.");
+	}
 	for(const auto &it : systems)
 		if(it.second.Name().empty())
 			Files::LogError("Warning: system \"" + it.first + "\" is referred to, but never defined.");
+	for(const auto &it : outfits)
+		if(!it.second.Category().empty()
+			&& find(outfitCategories.begin(), outfitCategories.end(), it.second.Category()) == outfitCategories.end())
+			Files::LogError("Warning: outfit \"" + it.first + "\" has an undefined category.");
 }
 
 
