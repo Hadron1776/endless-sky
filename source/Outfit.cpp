@@ -27,8 +27,6 @@ namespace {
 	const double EPS = 0.0000000001;
 }
 
-
-
 void Outfit::Load(const DataNode &node)
 {
 	if(node.Size() >= 2)
