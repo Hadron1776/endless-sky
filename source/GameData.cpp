@@ -217,6 +217,10 @@ void GameData::BeginLoad(const char * const *argv)
 // Check for objects that are referred to but never defined.
 void GameData::CheckReferences()
 {
+	if(find(shipCategories.begin(), shipCategories.end(), "Fighter") == shipCategories.end())
+		shipCategories.push_back("Fighter");
+	if(find(shipCategories.begin(), shipCategories.end(), "Drone") == shipCategories.end())
+		shipCategories.push_back("Drone");
 	for(const auto &it : conversations)
 		if(it.second.IsEmpty())
 			Files::LogError("Warning: conversation \"" + it.first + "\" is referred to, but never defined.");
@@ -345,10 +349,6 @@ void GameData::Preload(const Sprite *sprite)
 
 void GameData::FinishLoading()
 {
-	if(find(shipCategories.begin(), shipCategories.end(), "Fighter") == shipCategories.end())
-		shipCategories.push_back("Fighter");
-	if(find(shipCategories.begin(), shipCategories.end(), "Drone") == shipCategories.end())
-		shipCategories.push_back("Drone");
 	spriteQueue.Finish();
 }
 
