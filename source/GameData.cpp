@@ -107,8 +107,7 @@ namespace {
 	Set<News> news;
 	map<string, vector<string>> ratings;
 	
-	vector<string> outfitCategories;
-	vector<string> shipCategories;
+	map<string, vector<string>> categories;
 	
 	StarField background;
 	
@@ -217,12 +216,12 @@ void GameData::BeginLoad(const char * const *argv)
 // Check for objects that are referred to but never defined.
 void GameData::CheckReferences()
 {
-	set<string> knownOutfitCategories(outfitCategories.begin(), outfitCategories.end());
-	set<string> knownShipCategories(shipCategories.begin(), shipCategories.end());
+	set<string> knownOutfitCategories(categories["outfit"].begin(), categories["outfit"].end());
+	set<string> knownShipCategories(categories["ship"].begin(), categories["ship"].end());
 	for(const string &carried : {"Fighter", "Drone"})
 		if(!knownShipCategories.count(carried))
 		{
-			shipCategories.push_back(carried);
+			categories["ship"].push_back(carried);
 			knownShipCategories.emplace(carried);
 		}
 	for(const auto &it : conversations)
@@ -782,7 +781,7 @@ const string &GameData::Rating(const string &type, int level)
 // Get player-defined categories for outfits and ships.
 const vector<string> &GameData::Categories(const string &type)
 {
-	return (type == "outfit" ? outfitCategories : shipCategories);
+	return categories[type == "outfit" ? "outfit" : "ship"];
 }
 
 
@@ -977,9 +976,9 @@ void GameData::LoadFile(const string &path, bool debugMode)
 		{
 			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
 			{
+				vector<string> &categoryList = categories[node.Token(1)];
 				// Get the list of outfit and ship categories from data files.
 				// If a category already exists, it will be moved to the back of the list.
-				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
 				for(const DataNode &child : node)
 				{
 					const auto &it = find(categoryList.begin(), categoryList.end(), child.Token(0));
