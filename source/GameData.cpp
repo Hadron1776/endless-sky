@@ -977,6 +977,8 @@ void GameData::LoadFile(const string &path, bool debugMode)
 		{
 			if(node.Token(1) == "outfit" || node.Token(1) == "ship")
 			{
+				// Get the list of outfit and ship categories from data files.
+				// If a category already exists, it will be moved to the back of the list.
 				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
 				for(const DataNode &child : node)
 				{
