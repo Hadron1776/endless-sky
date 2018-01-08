@@ -979,8 +979,12 @@ void GameData::LoadFile(const string &path, bool debugMode)
 			{
 				vector<string> &categoryList = (node.Token(1) == "outfit" ? outfitCategories : shipCategories);
 				for(const DataNode &child : node)
-					if(find(categoryList.begin(), categoryList.end(), child.Token(0)) == categoryList.end())
-						categoryList.push_back(child.Token(0));
+				{
+					const auto &it = find(categoryList.begin(), categoryList.end(), child.Token(0));
+					if(it != categoryList.end())
+						categoryList.erase(it);
+					categoryList.push_back(child.Token(0));
+				}
 			}
 			else
 				node.PrintTrace("Skipping unsupported use of \"categories\" object:");
