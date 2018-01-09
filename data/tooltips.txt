@@ -142,6 +142,9 @@ tip "jump fuel:"
 
 tip "map:"
 	`How many star systems are included in this map.`
+	
+tip "maintenance fee:"
+	`How much this outfit costs per day to operate.`
 
 tip "mass with no cargo:"
 	`Mass of this ship when not carrying any cargo or fighters. Cargo increases mass, which reduces acceleration and turn rate.`
