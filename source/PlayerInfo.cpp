@@ -534,7 +534,7 @@ void PlayerInfo::IncrementDate()
 	
 	// Have the player pay salaries, mortgages, etc. and print a message that
 	// summarizes the payments that were made.
-	string message = accounts.Step(assets, Salaries());
+	string message = accounts.Step(assets, Salaries(), Maintenance());
 	if(!message.empty())
 		Messages::Add(message);
 	
@@ -646,6 +646,20 @@ int64_t PlayerInfo::Salaries() const
 	
 	// Every crew member except the player receives 100 credits per day.
 	return 100 * (crew - 1);
+}
+
+
+
+int64_t PlayerInfo::Maintenance() const
+{
+	int64_t maintenanceFees = 0;
+	
+	// A ship that is "parked" remains on a planet and requires no upkeep.
+	for(const shared_ptr<Ship> &ship : ships)
+		if(!(ship->IsParked() || ship->IsDisabled()))
+			maintenanceFees += ship->Attributes().Get("maintenance fee");
+			
+	return maintenanceFees;
 }
 
 
