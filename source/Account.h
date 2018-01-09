@@ -41,7 +41,7 @@ public:
 	void PayExtra(int mortgage, int64_t amount);
 	
 	// Step forward one day, and return a string summarizing payments made.
-	std::string Step(int64_t assets, int64_t salaries);
+	std::string Step(int64_t assets, int64_t salaries, int64_t maintenance);
 	
 	// Overdue crew salaries:
 	int64_t SalariesOwed() const;
@@ -69,6 +69,7 @@ private:
 	int64_t credits;
 	// If back salaries cannot be paid, they pile up rather than being ignored.
 	int64_t salariesOwed;
+	int64_t maintenanceOwed;
 	
 	std::vector<Mortgage> mortgages;
 	

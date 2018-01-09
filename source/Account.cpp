@@ -127,7 +127,7 @@ void Account::PayExtra(int mortgage, int64_t amount)
 
 
 // Step forward one day, and return a string summarizing payments made.
-string Account::Step(int64_t assets, int64_t salaries)
+string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 {
 	ostringstream out;
 	
@@ -156,6 +156,23 @@ string Account::Step(int64_t assets, int64_t salaries)
 		}
 	}
 	
+	maintenanceOwed += maintenance;
+	int64_t maintenancePaid = maintenanceOwed;
+	if(maintenanceOwed)
+	{
+		if(maintenanceOwed > credits)
+		{
+			maintenancePaid = max<int64_t>(credits, 0);
+			maintenanceOwed -= maintenancePaid;
+			credits -= maintenancePaid;
+			out << "You could not pay upkeep on your ship(s). "; 
+		}
+		else
+		{
+			credits -= maintenanceOwed;
+			maintenanceOwed = 0;
+		}
+	}
 	// Unlike salaries, each mortgage payment must either be made in its entirety,
 	// or skipped completely (accruing interest and reducing your credit score).
 	int64_t mortgagesPaid = 0;
@@ -209,20 +226,23 @@ string Account::Step(int64_t assets, int64_t salaries)
 	
 	// If you made payments of all three types, the punctuation needs to
 	// include commas, so just handle that separately here.
-	if(salariesPaid && mortgagesPaid && finesPaid)
+	if(salariesPaid && mortgagesPaid && finesPaid && maintenancePaid)
 		out << Format::Number(salariesPaid) << " credits in crew salaries, " << Format::Number(mortgagesPaid)
-			<< " in mortgages, and " << Format::Number(finesPaid) << " in fines.";
+			<< " in mortgages, " << Format::Number(finesPaid) << " in fines, and " << Format::Number(maintenancePaid)
+			<< " in upkeep.";
 	else
 	{
 		if(salariesPaid)
-			out << Format::Number(salariesPaid) << ((mortgagesPaid || finesPaid) ?
+			out << Format::Number(salariesPaid) << ((mortgagesPaid || finesPaid || maintenancePaid) ?
 				" credits in crew salaries and " : " credits in crew salaries.");
 		if(mortgagesPaid)
 			out << Format::Number(mortgagesPaid) << (salariesPaid ? " " : " credits ")
 				<< (finesPaid ? "in mortgage payments and " : "in mortgage payments.");
 		if(finesPaid)
-			out << Format::Number(finesPaid) << ((salariesPaid || mortgagesPaid) ?
+			out << Format::Number(finesPaid) << ((salariesPaid || mortgagesPaid || maintenancePaid) ?
 				" in fines." : " credits in fines.");
+		if(maintenancePaid)
+			out << Format::Number(maintenancePaid) << " credits in ship upkeep.";
 	}
 	return out.str();
 }
