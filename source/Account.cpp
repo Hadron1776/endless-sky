@@ -31,7 +31,7 @@ namespace {
 
 // Default constructor.
 Account::Account()
-	: credits(0), salariesOwed(0), creditScore(400)
+	: credits(0), creditScore(400)
 {
 }
 
@@ -41,7 +41,8 @@ Account::Account()
 void Account::Load(const DataNode &node)
 {
 	credits = 0;
-	salariesOwed = 0;
+	creditsOwed["salaries"] = 0;
+	creditsOwed["maintenance"] = 0;
 	creditScore = 400;
 	history.clear();
 	mortgages.clear();
@@ -51,7 +52,9 @@ void Account::Load(const DataNode &node)
 		if(child.Token(0) == "credits" && child.Size() >= 2)
 			credits = child.Value(1);
 		else if(child.Token(0) == "salaries" && child.Size() >= 2)
-			salariesOwed = child.Value(1);
+			creditsOwed["salaries"] = child.Value(1);
+		else if(child.Token(0) == "maintenance" && child.Size() >= 2)
+			creditsOwed["maintenance"] = child.Value(1);
 		else if(child.Token(0) == "score" && child.Size() >= 2)
 			creditScore = child.Value(1);
 		else if(child.Token(0) == "mortgage")
@@ -65,14 +68,16 @@ void Account::Load(const DataNode &node)
 
 
 // Write account information to a saved game file.
-void Account::Save(DataWriter &out) const
+void Account::Save(DataWriter &out)
 {
 	out.Write("account");
 	out.BeginChild();
 	{
 		out.Write("credits", credits);
-		if(salariesOwed)
-			out.Write("salaries", salariesOwed);
+		if(creditsOwed["salaries"] > 0)
+			out.Write("salaries", creditsOwed["salaries"]);
+		if(creditsOwed["maintenance"] > 0)
+			out.Write("maintenance", creditsOwed["maintenance"]);
 		out.Write("score", creditScore);
 		
 		out.Write("history");
@@ -132,45 +137,46 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	ostringstream out;
 	
 	// Keep track of what payments were made and whether any could not be made.
-	salariesOwed += salaries;
+	creditsOwed["salaries"] += salaries;
 	bool paid = true;
 	
 	// Crew salaries take highest priority.
-	int64_t salariesPaid = salariesOwed;
-	if(salariesOwed)
+	int64_t salariesPaid = creditsOwed["salaries"];
+	if(creditsOwed["salaries"] > 0)
 	{
-		if(salariesOwed > credits)
+		if(creditsOwed["salaries"] > credits)
 		{
 			// If you can't pay the full salary amount, still pay some of it and
 			// remember how much back wages you owe to your crew.
 			salariesPaid = max<int64_t>(credits, 0);
-			salariesOwed -= salariesPaid;
+			creditsOwed["salaries"] -= salariesPaid;
 			credits -= salariesPaid;
 			paid = false;
 			out << "You could not pay all your crew salaries. ";
 		}
 		else
 		{
-			credits -= salariesOwed;
-			salariesOwed = 0;
+			credits -= creditsOwed["salaries"];
+			creditsOwed["salaries"] = 0;
 		}
 	}
 	
-	maintenanceOwed += maintenance;
-	int64_t maintenancePaid = maintenanceOwed;
-	if(maintenanceOwed)
+	creditsOwed["maintenance"] += maintenance;
+	int64_t maintenancePaid = creditsOwed["maintenance"];
+	if(creditsOwed["maintenance"])
 	{
-		if(maintenanceOwed > credits)
+		if(creditsOwed["maintenance"] > credits)
 		{
 			maintenancePaid = max<int64_t>(credits, 0);
-			maintenanceOwed -= maintenancePaid;
+			creditsOwed["maintenance"] -= maintenancePaid;
 			credits -= maintenancePaid;
+			paid = false;
 			out << "You could not pay upkeep on your ship(s). "; 
 		}
 		else
 		{
-			credits -= maintenanceOwed;
-			maintenanceOwed = 0;
+			credits -= creditsOwed["maintenance"];
+			creditsOwed["maintenance"] = 0;
 		}
 	}
 	// Unlike salaries, each mortgage payment must either be made in its entirety,
@@ -211,7 +217,10 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	// Keep track of your net worth over the last HISTORY days.
 	if(history.size() > HISTORY)
 		history.erase(history.begin());
-	history.push_back(credits + assets - salariesOwed);
+	int64_t totalCreditsOwed = 0;
+	for(auto &it : creditsOwed)
+		totalCreditsOwed += it.second;
+	history.push_back(credits + assets - totalCreditsOwed);
 	
 	// If you failed to pay any debt, your credit score drops. Otherwise, even
 	// if you have no debts, it increases. (Because, having no debts at all
@@ -219,7 +228,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	creditScore = max(200, min(800, creditScore + (paid ? 1 : -5)));
 	
 	// If you didn't make any payments, no need to continue further.
-	if(!(salariesPaid + mortgagesPaid + finesPaid))
+	if(!(salariesPaid + mortgagesPaid + finesPaid + maintenancePaid))
 		return out.str();
 	
 	out << "You paid ";
@@ -249,34 +258,18 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 
 
 
-int64_t Account::SalariesOwed() const
+int64_t Account::CreditsOwed(string forType)
 {
-	return salariesOwed;
+	return creditsOwed[forType];
 }
 
 
 
-void Account::PaySalaries(int64_t amount)
+void Account::PayBills(string forType, int64_t amount)
 {
-	amount = min(min(amount, salariesOwed), credits);
+	amount = min(min(amount, creditsOwed[forType]), credits);
 	credits -= amount;
-	salariesOwed -= amount;
-}
-
-
-
-int64_t Account::MaintenanceOwed() const
-{
-	return maintenanceOwed;
-}
-
-
-
-void Account::PayMaintenance(int64_t amount)
-{
-	amount = min(min(amount, maintenanceOwed), credits);
-	credits -= amount;
-	maintenanceOwed -= amount;
+	creditsOwed[forType] -= amount;
 }
 
 

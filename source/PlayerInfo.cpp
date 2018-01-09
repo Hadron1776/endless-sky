@@ -2190,7 +2190,8 @@ void PlayerInfo::UpdateAutoConditions()
 	conditions["credits"] = min(limit, accounts.Credits());
 	conditions["unpaid mortgages"] = min(limit, accounts.TotalDebt("Mortgage"));
 	conditions["unpaid fines"] = min(limit, accounts.TotalDebt("Fine"));
-	conditions["unpaid salaries"] = min(limit, accounts.SalariesOwed());
+	conditions["unpaid salaries"] = min(limit, accounts.CreditsOwed("salaries"));
+	conditions["unpaid maintenance fees"] = min(limit, accounts.CreditsOwed("maintenance"));
 	conditions["credit score"] = accounts.CreditScore();
 	// Serialize the current reputation with other governments.
 	SetReputationConditions();

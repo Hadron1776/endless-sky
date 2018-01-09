@@ -174,9 +174,9 @@ void BankPanel::Draw()
 		
 		table.Draw("Crew Salaries");
 		// Check whether the player owes back salaries.
-		if(player.Accounts().SalariesOwed())
+		if(player.Accounts().CreditsOwed("salaries"))
 		{
-			table.Draw(Format::Number(player.Accounts().SalariesOwed()));
+			table.Draw(Format::Number(player.Accounts().CreditsOwed("salaries")));
 			table.Draw("(overdue)");
 			table.Advance(1);
 		}
@@ -191,9 +191,9 @@ void BankPanel::Draw()
 		
 		table.Draw("Ship upkeep");
 		// Check whether the player owes money on their outfits and/or ships
-		if(player.Accounts().MaintenanceOwed())
+		if(player.Accounts().CreditsOwed("maintenance"))
 		{
-			table.Draw(Format::Number(player.Accounts().MaintenanceOwed()));
+			table.Draw(Format::Number(player.Accounts().CreditsOwed("maintenance")));
 			table.Draw("(overdue)");
 			table.Advance(1);
 		}
@@ -279,8 +279,8 @@ bool BankPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 			else
 				++i;
 		}
-		player.Accounts().PaySalaries(player.Accounts().SalariesOwed());
-		player.Accounts().PayMaintenance((player.Accounts().MaintenanceOwed()));
+		for(const auto &type : {"salaries", "maintenance"})
+			player.Accounts().PayBills(type, player.Accounts().CreditsOwed(type));
 		qualify = player.Accounts().Prequalify();
 	}
 	else
