@@ -45,7 +45,7 @@ public:
 	std::string Step(int64_t assets, int64_t salaries, int64_t maintenance);
 	
 	// Overdue payments:
-	int64_t CreditsOwed(std::string forType);
+	const int64_t &CreditsOwed(std::string forType) const;
 	void PayBills(std::string forType, int64_t amount);
 	
 	// Liabilities:
