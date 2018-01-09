@@ -41,8 +41,8 @@ Account::Account()
 void Account::Load(const DataNode &node)
 {
 	credits = 0;
-	creditsOwed.at("salaries") = 0;
-	creditsOwed.at("maintenance") = 0;
+	creditsOwed["salaries"] = 0;
+	creditsOwed["maintenance"] = 0;
 	creditScore = 400;
 	history.clear();
 	mortgages.clear();
@@ -267,7 +267,7 @@ int64_t Account::CreditsOwed(string forType)
 
 void Account::PayBills(string forType, int64_t amount)
 {
-	amount = min(min(amount, creditsOwed[forType]), credits);
+	amount = min(min(amount, creditsOwed.at(forType)), credits);
 	credits -= amount;
 	creditsOwed.at(forType) -= amount;
 }
