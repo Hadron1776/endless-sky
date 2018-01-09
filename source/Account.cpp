@@ -258,7 +258,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 
 
 
-const int64_t &Account::CreditsOwed(string forType) const
+int64_t Account::CreditsOwed(string forType) const
 {
 	return creditsOwed.at(forType);
 }
