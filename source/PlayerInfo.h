@@ -279,7 +279,7 @@ private:
 	bool hasFullClearance = true;
 	bool isDead = false;
 	
-	mutable Account accounts;
+	Account accounts;
 	
 	std::shared_ptr<Ship> flagship;
 	std::vector<std::shared_ptr<Ship>> ships;

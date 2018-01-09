@@ -41,8 +41,8 @@ Account::Account()
 void Account::Load(const DataNode &node)
 {
 	credits = 0;
-	creditsOwed["salaries"] = 0;
-	creditsOwed["maintenance"] = 0;
+	creditsOwed.at("salaries") = 0;
+	creditsOwed.at("maintenance") = 0;
 	creditScore = 400;
 	history.clear();
 	mortgages.clear();
@@ -52,9 +52,9 @@ void Account::Load(const DataNode &node)
 		if(child.Token(0) == "credits" && child.Size() >= 2)
 			credits = child.Value(1);
 		else if(child.Token(0) == "salaries" && child.Size() >= 2)
-			creditsOwed["salaries"] = child.Value(1);
+			creditsOwed.at("salaries") = child.Value(1);
 		else if(child.Token(0) == "maintenance" && child.Size() >= 2)
-			creditsOwed["maintenance"] = child.Value(1);
+			creditsOwed.at("maintenance") = child.Value(1);
 		else if(child.Token(0) == "score" && child.Size() >= 2)
 			creditScore = child.Value(1);
 		else if(child.Token(0) == "mortgage")
@@ -68,16 +68,16 @@ void Account::Load(const DataNode &node)
 
 
 // Write account information to a saved game file.
-void Account::Save(DataWriter &out)
+void Account::Save(DataWriter &out) const
 {
 	out.Write("account");
 	out.BeginChild();
 	{
 		out.Write("credits", credits);
-		if(creditsOwed["salaries"] > 0)
-			out.Write("salaries", creditsOwed["salaries"]);
-		if(creditsOwed["maintenance"] > 0)
-			out.Write("maintenance", creditsOwed["maintenance"]);
+		if(creditsOwed.at("salaries") > 0)
+			out.Write("salaries", creditsOwed.at("salaries"));
+		if(creditsOwed.at("maintenance") > 0)
+			out.Write("maintenance", creditsOwed.at("maintenance"));
 		out.Write("score", creditScore);
 		
 		out.Write("history");
@@ -137,46 +137,46 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 	ostringstream out;
 	
 	// Keep track of what payments were made and whether any could not be made.
-	creditsOwed["salaries"] += salaries;
+	creditsOwed.at("salaries") += salaries;
 	bool paid = true;
 	
 	// Crew salaries take highest priority.
-	int64_t salariesPaid = creditsOwed["salaries"];
-	if(creditsOwed["salaries"] > 0)
+	int64_t salariesPaid = creditsOwed.at("salaries");
+	if(creditsOwed.at("salaries") > 0)
 	{
-		if(creditsOwed["salaries"] > credits)
+		if(creditsOwed.at("salaries") > credits)
 		{
 			// If you can't pay the full salary amount, still pay some of it and
 			// remember how much back wages you owe to your crew.
 			salariesPaid = max<int64_t>(credits, 0);
-			creditsOwed["salaries"] -= salariesPaid;
+			creditsOwed.at("salaries") -= salariesPaid;
 			credits -= salariesPaid;
 			paid = false;
 			out << "You could not pay all your crew salaries. ";
 		}
 		else
 		{
-			credits -= creditsOwed["salaries"];
-			creditsOwed["salaries"] = 0;
+			credits -= creditsOwed.at("salaries");
+			creditsOwed.at("salaries") = 0;
 		}
 	}
 	
-	creditsOwed["maintenance"] += maintenance;
-	int64_t maintenancePaid = creditsOwed["maintenance"];
-	if(creditsOwed["maintenance"])
+	creditsOwed.at("maintenance") += maintenance;
+	int64_t maintenancePaid = creditsOwed.at("maintenance");
+	if(creditsOwed.at("maintenance"))
 	{
-		if(creditsOwed["maintenance"] > credits)
+		if(creditsOwed.at("maintenance") > credits)
 		{
 			maintenancePaid = max<int64_t>(credits, 0);
-			creditsOwed["maintenance"] -= maintenancePaid;
+			creditsOwed.at("maintenance") -= maintenancePaid;
 			credits -= maintenancePaid;
 			paid = false;
 			out << "You could not pay upkeep on your ship(s). "; 
 		}
 		else
 		{
-			credits -= creditsOwed["maintenance"];
-			creditsOwed["maintenance"] = 0;
+			credits -= creditsOwed.at("maintenance");
+			creditsOwed.at("maintenance") = 0;
 		}
 	}
 	// Unlike salaries, each mortgage payment must either be made in its entirety,
@@ -260,7 +260,7 @@ string Account::Step(int64_t assets, int64_t salaries, int64_t maintenance)
 
 int64_t Account::CreditsOwed(string forType)
 {
-	return creditsOwed[forType];
+	return creditsOwed.at(forType);
 }
 
 
@@ -269,7 +269,7 @@ void Account::PayBills(string forType, int64_t amount)
 {
 	amount = min(min(amount, creditsOwed[forType]), credits);
 	credits -= amount;
-	creditsOwed[forType] -= amount;
+	creditsOwed.at(forType) -= amount;
 }
 
 
