@@ -265,6 +265,22 @@ void Account::PaySalaries(int64_t amount)
 
 
 
+int64_t Account::MaintenanceOwed() const
+{
+	return maintenanceOwed;
+}
+
+
+
+void Account::PayMaintenance(int64_t amount)
+{
+	amount = min(min(amount, maintenanceOwed), credits);
+	credits -= amount;
+	maintenanceOwed -= amount;
+}
+
+
+
 // Access the list of mortgages.
 const vector<Mortgage> &Account::Mortgages() const
 {
