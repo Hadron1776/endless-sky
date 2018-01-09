@@ -103,6 +103,7 @@ void BankPanel::Draw()
 	
 	// Check if salaries need to be drawn.
 	int64_t salaries = player.Salaries();
+	int64_t maintenance = player.Maintenance();
 	int64_t income[2] = {0, 0};
 	static const string prefix[2] = {"salary: ", "tribute: "};
 	for(int i = 0; i < 2; ++i)
@@ -184,6 +185,23 @@ void BankPanel::Draw()
 		table.Draw(salaries);
 		table.Advance();
 	}
+	if(maintenance)
+	{
+		totalPayment += maintenance;
+		
+		table.Draw("Ship upkeep");
+		// Check whether the player owes money on their outfits and/or ships
+		if(player.Accounts().MaintenanceOwed())
+		{
+			table.Draw(Format::Number(player.Accounts().MaintenanceOwed()));
+			table.Draw("(overdue)");
+			table.Advance(1);
+		}
+		else
+			table.Advance(3);
+		table.Draw(maintenance);
+		table.Advance();
+	}
 	if(income[0] || income[1])
 	{
 		// Your daily income offsets expenses.
@@ -262,6 +280,7 @@ bool BankPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 				++i;
 		}
 		player.Accounts().PaySalaries(player.Accounts().SalariesOwed());
+		player.Accounts().PayMaintenance((player.Accounts().MaintenanceOwed()));
 		qualify = player.Accounts().Prequalify();
 	}
 	else
