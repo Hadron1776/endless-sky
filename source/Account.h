@@ -34,7 +34,7 @@ public:
 	
 	// Load or save account data.
 	void Load(const DataNode &node);
-	void Save(DataWriter &out);
+	void Save(DataWriter &out) const;
 	
 	// Get or change the player's credits.
 	int64_t Credits() const;
