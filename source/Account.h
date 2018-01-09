@@ -47,6 +47,9 @@ public:
 	int64_t SalariesOwed() const;
 	void PaySalaries(int64_t amount);
 	
+	int64_t MaintenanceOwed() const;
+	void PayMaintenance(int64_t amount);
+	
 	// Liabilities:
 	const std::vector<Mortgage> &Mortgages() const;
 	void AddMortgage(int64_t principal);
