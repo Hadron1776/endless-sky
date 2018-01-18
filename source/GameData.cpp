@@ -781,7 +781,7 @@ const string &GameData::Rating(const string &type, int level)
 // Get player-defined categories for outfits and ships.
 const vector<string> &GameData::Categories(const string &type)
 {
-	return categories[type == "outfit" ? "outfit" : "ship"];
+	return categories[type];
 }
 
 
