@@ -346,6 +346,7 @@ interface "hud"
 
 	# Targets.
 	anchor top left
+	visible if "enable radar"
 	sprite "ui/radar"
 		from 0 0
 		align top left
@@ -353,6 +354,7 @@ interface "hud"
 		center 128 128
 	value "radar radius" 110
 	value "radar pointer radius" 130
+	visible
 	
 	sprite "ui/navigation"
 		from 200 0
