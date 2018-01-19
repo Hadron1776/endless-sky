@@ -857,7 +857,7 @@ void Engine::Draw() const
 	
 	// Draw the heads-up display.
 	interface->Draw(info);
-	if(interface->HasPoint("radar"))
+	if(interface->HasPoint("radar") && info.HasCondition("enable radar"))
 	{
 		radar[drawTickTock].Draw(
 			interface->GetPoint("radar"),
@@ -1259,7 +1259,8 @@ void Engine::CalculateStep()
 	}
 	draw[calcTickTock].SetCenter(newCenter, newCenterVelocity);
 	batchDraw[calcTickTock].SetCenter(newCenter);
-	radar[calcTickTock].SetCenter(newCenter);
+	if(info.HasCondition("enable radar"))
+		radar[calcTickTock].SetCenter(newCenter);
 	
 	// Populate the radar.
 	FillRadar();
