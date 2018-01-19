@@ -34,6 +34,7 @@ namespace {
 	
 	const vector<double> ZOOMS = {.25, .35, .50, .70, 1.00, 1.40, 2.00};
 	int zoomIndex = 4;
+	int difficulty = 1;
 }
 
 
@@ -54,6 +55,9 @@ void Preferences::Load()
 	settings["Draw background haze"] = true;
 	settings["Hide unexplored map regions"] = true;
 	settings["Turrets focus fire"] = true;
+	settings["Game is easy"] = true;
+	settings["Game is medium"] = false;
+	settings["Game is hard"] = false;
 	
 	DataFile prefs(Files::Config() + "preferences.txt");
 	for(const DataNode &node : prefs)
@@ -112,6 +116,23 @@ void Preferences::ToggleAmmoUsage()
 	bool frugal = Has(FRUGAL_ESCORTS);
 	Preferences::Set(EXPEND_AMMO, !(expend && !frugal));
 	Preferences::Set(FRUGAL_ESCORTS, !expend);
+}
+
+
+
+void Preferences::ToggleDifficulty()
+{
+	if(difficulty < 2)
+		++difficulty;
+	else
+		difficulty = 0;
+}
+
+
+
+int Preferences::Difficulty()
+{
+	return difficulty;
 }
 
 

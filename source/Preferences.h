@@ -29,6 +29,8 @@ public:
 	// and "always."
 	static void ToggleAmmoUsage();
 	static std::string AmmoUsage();
+	static void ToggleDifficulty();
+	static int Difficulty();
 	
 	// Scroll speed preference.
 	static int ScrollSpeed();

@@ -594,6 +594,8 @@ void Engine::Step(bool isActive)
 		if(targetAsteroid)
 			for(const pair<const Outfit *, int> &it : targetAsteroid->Payload())
 				player.Harvest(it.first);
+		if(Preferences::Difficulty() <= 1 || flagship->Attributes().Get("radar scan"))
+			info.SetCondition("enable radar");
 	}
 	if(!target)
 		targetSwizzle = -1;
@@ -1413,7 +1415,7 @@ void Engine::FillCollisionSets()
 
 
 
-// At random intervals, crete new fleets in neighboring systems or coming from
+// At random intervals, create new fleets in neighboring systems or coming from
 // planets in the current one.
 void Engine::SpawnFleets()
 {
@@ -1830,6 +1832,9 @@ void Engine::DoScanning(const shared_ptr<Ship> &ship)
 // Fill in all the objects in the radar display.
 void Engine::FillRadar()
 {
+	if(!info.HasCondition("enable radar"))
+		return;
+	
 	const Ship *flagship = player.Flagship();
 	const System *playerSystem = player.GetSystem();
 	

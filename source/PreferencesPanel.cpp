@@ -51,6 +51,7 @@ namespace {
 	const string FRUGAL_ESCORTS = "Escorts use ammo frugally";
 	const string REACTIVATE_HELP = "Reactivate first-time help";
 	const string SCROLL_SPEED = "Scroll speed";
+	const string DIFFICULTY = "Difficulty";
 }
 
 
@@ -171,6 +172,8 @@ bool PreferencesPanel::Click(int x, int y, int clicks)
 				Preferences::ToggleAmmoUsage();
 			else if(zone.Value() == TURRET_TRACKING)
 				Preferences::Set(FOCUS_PREFERENCE, !Preferences::Has(FOCUS_PREFERENCE));
+			else if(zone.Value() == DIFFICULTY)
+				Preferences::ToggleDifficulty();
 			else if(zone.Value() == REACTIVATE_HELP)
 			{
 				for(const auto &it : GameData::HelpTemplates())
@@ -431,6 +434,7 @@ void PreferencesPanel::DrawSettings()
 		"Automatic firing",
 		EXPEND_AMMO,
 		TURRET_TRACKING,
+		DIFFICULTY,
 		"",
 		"Performance",
 		"Show CPU / GPU load",
@@ -492,6 +496,15 @@ void PreferencesPanel::DrawSettings()
 		{
 			isOn = true;
 			text = Preferences::Has(FOCUS_PREFERENCE) ? "focused" : "opportunistic";
+		}
+		else if(setting == DIFFICULTY)
+		{
+			vector<string> difficulties = {
+			"easy",
+			"medium",
+			"hard" };
+			isOn = true;
+			text = difficulties[Preferences::Difficulty()];
 		}
 		else if(setting == REACTIVATE_HELP)
 		{
