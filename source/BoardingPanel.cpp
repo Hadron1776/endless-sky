@@ -142,7 +142,7 @@ void BoardingPanel::Draw()
 			FillShader::Fill(Point(-155., y + 10.), Point(360., 20.), back);
 		
 		// Color the item based on whether you have space for it.
-		const Color &color = item.CanTake(*you) ? isSelected ? bright : medium : dim;
+		const Color &color = item.CanTake(*victim, *you) ? isSelected ? bright : medium : dim;
 		Point pos(-320., y + fontOff);
 		font.Draw(item.Name(), pos, color);
 		
@@ -474,7 +474,7 @@ bool BoardingPanel::CanTake() const
 	if(static_cast<unsigned>(selected) >= plunder.size())
 		return false;
 	
-	return plunder[selected].CanTake(*you);
+	return plunder[selected].CanTake(*victim, *you);
 }
 
 
@@ -589,18 +589,18 @@ const Outfit *BoardingPanel::Plunder::GetOutfit() const
 
 // Find out how many of these I can take if I have this amount of cargo
 // space free.
-bool BoardingPanel::Plunder::CanTake(const Ship &ship) const
+bool BoardingPanel::Plunder::CanTake(const Ship &victim, const Ship &attacker) const
 {
 	// If there's cargo space for this outfit, you can take it.
 	double mass = UnitMass();
-	if(ship.Cargo().Free() >= mass)
-		return true;
+	if(attacker.Cargo().Free() >= mass)
+		return outfit ? victim.Attributes().CanAdd(*outfit, -1) : true;
 	
 	// Otherwise, check if it is ammo for any of your weapons. If so, check if
 	// you can install it as an outfit.
 	if(outfit)
-		for(const auto &it : ship.Outfits())
-			if(it.first != outfit && it.first->Ammo() == outfit && ship.Attributes().CanAdd(*outfit))
+		for(const auto &it : attacker.Outfits())
+			if(it.first != outfit && it.first->Ammo() == outfit && attacker.Attributes().CanAdd(*outfit))
 				return true;
 	
 	return false;
