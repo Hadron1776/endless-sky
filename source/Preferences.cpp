@@ -55,9 +55,6 @@ void Preferences::Load()
 	settings["Draw background haze"] = true;
 	settings["Hide unexplored map regions"] = true;
 	settings["Turrets focus fire"] = true;
-	settings["Game is easy"] = true;
-	settings["Game is medium"] = false;
-	settings["Game is hard"] = false;
 	
 	DataFile prefs(Files::Config() + "preferences.txt");
 	for(const DataNode &node : prefs)
