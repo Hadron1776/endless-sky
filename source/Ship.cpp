@@ -2376,6 +2376,7 @@ int Ship::TakeDamage(const Projectile &projectile, bool isBlast)
 	
 	double damageScaling = 1.;
 	const Weapon &weapon = projectile.GetWeapon();
+	double variation = weapon.DamageVariation();
 	if(isBlast && weapon.IsDamageScaled())
 	{
 		// Scale blast damage based on the distance from the blast
@@ -2391,8 +2392,10 @@ int Ship::TakeDamage(const Projectile &projectile, bool isBlast)
 		double rSquared = d * d / (blastRadius * blastRadius);
 		damageScaling *= k / ((1. + rSquared * rSquared) * (1. + rSquared * rSquared));
 	}
-	double shieldDamage = weapon.ShieldDamage() * damageScaling;
-	double hullDamage = weapon.HullDamage() * damageScaling;
+	double shieldDamage = (((1. - variation) * weapon.ShieldDamage()) 
+			+ (Random::Real() * (2. * variation))) * damageScaling;
+	double hullDamage = (((1. - variation) * weapon.HullDamage()) 
+			+ (Random::Real() * (2. * variation))) * damageScaling;
 	double hitForce = weapon.HitForce() * damageScaling;
 	double fuelDamage = weapon.FuelDamage() * damageScaling;
 	double heatDamage = weapon.HeatDamage() * damageScaling;

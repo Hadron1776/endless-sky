@@ -158,6 +158,8 @@ void Weapon::LoadWeapon(const DataNode &node)
 				hitForce = value;
 			else if(key == "piercing")
 				piercing = max(0., min(1., value));
+			else if(key == "damage variation")
+				damageVariation = max(0., min(1., value));
 			else
 				child.PrintTrace("Unrecognized weapon attribute: \"" + key + "\":");
 		}
