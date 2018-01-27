@@ -2393,9 +2393,9 @@ int Ship::TakeDamage(const Projectile &projectile, bool isBlast)
 		damageScaling *= k / ((1. + rSquared * rSquared) * (1. + rSquared * rSquared));
 	}
 	double shieldDamage = (((1. - variation) * weapon.ShieldDamage()) 
-			+ (Random::Real() * (2. * variation))) * damageScaling;
+			+ (Random::Real() * (2. * variation) * weapon.ShieldDamage())) * damageScaling;
 	double hullDamage = (((1. - variation) * weapon.HullDamage()) 
-			+ (Random::Real() * (2. * variation))) * damageScaling;
+			+ (Random::Real() * (2. * variation) * weapon.HullDamage())) * damageScaling;
 	double hitForce = weapon.HitForce() * damageScaling;
 	double fuelDamage = weapon.FuelDamage() * damageScaling;
 	double heatDamage = weapon.HeatDamage() * damageScaling;
