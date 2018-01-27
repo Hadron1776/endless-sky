@@ -90,11 +90,14 @@ public:
 	double BlastRadius() const;
 	double HitForce() const;
 	
+	double DamageVariation() const;
+	
 	// A "safe" weapon hits only hostile ships (even if it has a blast radius).
 	// A "phasing" weapon hits only its intended target; it passes through
 	// everything else, including asteroids.
 	bool IsSafe() const;
 	bool IsPhasing() const;
+	
 	// Blast radius weapons will scale damage and hit force based on distance,
 	// unless the "no damage scaling" keyphrase is used in the weapon definition.
 	bool IsDamageScaled() const;
@@ -186,6 +189,8 @@ private:
 	double blastRadius = 0.;
 	double hitForce = 0.;
 	
+	double damageVariation = 0.;
+	
 	static const int DAMAGE_TYPES = 7;
 	static const int SHIELD_DAMAGE = 0;
 	static const int HULL_DAMAGE = 1;
@@ -244,6 +249,8 @@ inline double Weapon::SplitRange() const { return splitRange; }
 inline double Weapon::TriggerRadius() const { return triggerRadius; }
 inline double Weapon::BlastRadius() const { return blastRadius; }
 inline double Weapon::HitForce() const { return hitForce; }
+
+inline double Weapon::DamageVariation() const { return damageVariation; }
 
 inline bool Weapon::IsSafe() const { return isSafe; }
 inline bool Weapon::IsPhasing() const { return isPhasing; }
