@@ -356,9 +356,9 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 					break;
 				
 				if(Random::Real() * total >= yourPower)
-					you->AddCrew(-1);
+					you->AddCrew(-1, false);
 				else
-					victim->AddCrew(-1);
+					victim->AddCrew(-1, false);
 			}
 			
 			// Report how many casualties each side suffered.
@@ -383,7 +383,7 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 			else if(!victim->Crew())
 			{
 				messages.push_back("You have succeeded in capturing this ship.");
-				victim->GetGovernment()->Offend(ShipEvent::CAPTURE, victim->RequiredCrew());
+				victim->GetGovernment()->Offend(ShipEvent::CAPTURE, victim->TotalCrew());
 				victim->WasCaptured(you);
 				if(!victim->JumpsRemaining() && you->CanRefuel(*victim))
 					you->TransferFuel(victim->JumpFuelMissing(), &*victim);

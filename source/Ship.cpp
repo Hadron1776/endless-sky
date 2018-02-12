@@ -2302,6 +2302,13 @@ int Ship::Crew() const
 
 
 
+int Ship::TotalCrew() const
+{
+	return totalCrew;
+}
+
+
+
 int Ship::RequiredCrew() const
 {
 	if(attributes.Get("automaton"))
@@ -2313,9 +2320,11 @@ int Ship::RequiredCrew() const
 
 
 
-void Ship::AddCrew(int count)
+void Ship::AddCrew(int count, bool addTotal)
 {
 	crew = min<int>(crew + count, attributes.Get("bunks"));
+	if(addTotal)
+		totalCrew = min<int>(crew + count, attributes.Get("bunks"));
 }
 
 
