@@ -356,9 +356,9 @@ bool BoardingPanel::KeyDown(SDL_Keycode key, Uint16 mod, const Command &command)
 					break;
 				
 				if(Random::Real() * total >= yourPower)
-					you->AddCrew(-1);
+					you->AddCrew(-1, false);
 				else
-					victim->AddCrew(-1);
+					victim->AddCrew(-1, false);
 			}
 			
 			// Report how many casualties each side suffered.

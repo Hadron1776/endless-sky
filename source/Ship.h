@@ -263,8 +263,9 @@ public:
 	
 	// Access how many crew members this ship has or needs.
 	int Crew() const;
+	int TotalCrew() const;
 	int RequiredCrew() const;
-	void AddCrew(int count);
+	void AddCrew(int count, bool addTotal = true);
 	// Check if this is a ship that can be used as a flagship.
 	bool CanBeFlagship() const;
 	
@@ -460,6 +461,7 @@ private:
 	Point acceleration;
 	
 	int crew = 0;
+	int totalCrew = 0;
 	int pilotError = 0;
 	int pilotOkay = 0;
 	
