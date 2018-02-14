@@ -438,22 +438,18 @@ bool Planet::IsAccessible(const Ship *ship) const
 {
 	// Check whether any of this planet's attributes are in the form of the
 	// string "requires: <attribute>"; if so the ship must have that attribute.
-	static const string PREFIX[2] = {"requires: ", "prohibits: "};
-	static const string PREFIX_END[2] = {"requires:!", "prohibits:!"};
+	static const string PREFIX = "requires: ";
+	static const string PREFIX_END = "requires:!";
+	auto it = attributes.lower_bound(PREFIX);
+	auto end = attributes.lower_bound(PREFIX_END);
 	if(!ship)
 		return false;
-	for(int i = 0; i < 2; ++i)
-	{
-		auto it = attributes.lower_bound(PREFIX[i]);
-		auto end = attributes.lower_bound(PREFIX_END[i]);
-		for( ; it != end; ++it)
-		{
-			double val  = ship->Attributes().Get(it->substr(PREFIX[i].length()));
-			if((!i && !val) || (i && val))
-				return false;
-		}
-	}
+	if(it == end)
+		return true;
 	
+	for( ; it != end; ++it)
+		if(!ship->Attributes().Get(it->substr(PREFIX.length())))
+			return false;
 	
 	return true;
 }
