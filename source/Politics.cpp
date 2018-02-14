@@ -139,6 +139,18 @@ bool Politics::CanLand(const Ship &ship, const Planet *planet) const
 	if(!gov->IsPlayer())
 		return !IsEnemy(gov, planet->GetGovernment());
 	
+	const string PREFIX = "prohibits: ";
+	const string PREFIX_END = "prohibits:!";
+	auto it = planet->Attributes().lower_bound(PREFIX);
+	auto end = planet->Attributes().lower_bound(PREFIX_END);
+	
+	if(it == end)
+		return CanLand(planet);
+	
+	for( ; it != end; ++it)
+		if(ship.Attributes().Get(it->substr(PREFIX.length())))
+			return false;
+	
 	return CanLand(planet);
 }
 
