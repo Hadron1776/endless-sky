@@ -36,6 +36,7 @@ color "logbook line" .2 .2 .2 1.
 color "shields" .43 .55 .70 .75
 color "hull" .70 .62 .43 .75
 color "heat" .70 .43 .43 .75
+color "overheat" .70 .61 .43 .75
 color "energy" .6 .6 .6 .75
 color "fuel" .70 .62 .43 .75
 
@@ -89,13 +90,13 @@ color "warning back" .21 .18 .08 1.
 
 # Colors used when drawing the map (system names, links, and the player's desired route).
 # (The color of the ring that represents a given system is context-sensitive.)
-color "map link" .6, .6, .6, .6
-color "map name" .6, .6, .6, .6
-color "map travel ok fleet" .2, .5, 0., 0.
-color "map travel ok flagship" .5, .4, 0., 0.
-color "map travel ok none" .55, .1, 0., 0.
-color "map used wormhole" .5, .2, .9, 1.
-color "map unused wormhole" .165, .066, .3, .333
+color "map link" .6 .6 .6 .6
+color "map name" .6 .6 .6 .6
+color "map travel ok fleet" .2 .5 0. 0.
+color "map travel ok flagship" .5 .4 0. 0.
+color "map travel ok none" .55 .1 0. 0.
+color "map used wormhole" .5 .2 .9 1.
+color "map unused wormhole" .165 .066 .3 .333
 
 
 
@@ -342,6 +343,16 @@ interface "hud"
 		from -13.5 403
 		dimensions 0 -192
 		color "heat"
+		size 2
+	bar "overheat"
+		from -13.5 403
+		dimensions 0 -192
+		color "overheat"
+		size 2
+	bar "overheat blink"
+		from -13.5 403
+		dimensions 0 -192
+		color "dim"
 		size 2
 
 	# Targets.

@@ -18,6 +18,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "LocationFilter.h"
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -27,6 +28,7 @@ class DataWriter;
 class GameEvent;
 class Outfit;
 class PlayerInfo;
+class Ship;
 class System;
 class UI;
 
@@ -38,6 +40,10 @@ class UI;
 // special item, modifying condition flags, or queueing an event to occur.
 class MissionAction {
 public:
+	MissionAction() = default;
+	// Construct and Load() at the same time.
+	MissionAction(const DataNode &node, const std::string &missionName);
+	
 	void Load(const DataNode &node, const std::string &missionName);
 	// Note: the Save() function can assume this is an instantiated mission, not
 	// a template, so it only has to save a subset of the data.
@@ -51,7 +57,7 @@ public:
 	bool CanBeDone(const PlayerInfo &player) const;
 	// Perform this action. If a conversation is shown, the given destination
 	// will be highlighted in the map if you bring it up.
-	void Do(PlayerInfo &player, UI *ui = nullptr, const System *destination = nullptr) const;
+	void Do(PlayerInfo &player, UI *ui = nullptr, const System *destination = nullptr, const std::shared_ptr<Ship> &ship = nullptr) const;
 	
 	// "Instantiate" this action by filling in the wildcard text for the actual
 	// destination, payment, cargo, etc.

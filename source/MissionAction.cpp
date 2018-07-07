@@ -18,6 +18,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Dialog.h"
 #include "Format.h"
 #include "GameData.h"
+#include "GameEvent.h"
 #include "Messages.h"
 #include "Outfit.h"
 #include "PlayerInfo.h"
@@ -103,6 +104,14 @@ namespace {
 			message += "flagship.";
 		Messages::Add(message);
 	}
+}
+
+
+
+// Construct and Load() at the same time.
+MissionAction::MissionAction(const DataNode &node, const string &missionName)
+{
+	Load(node, missionName);
 }
 
 
@@ -331,12 +340,14 @@ bool MissionAction::CanBeDone(const PlayerInfo &player) const
 
 
 
-void MissionAction::Do(PlayerInfo &player, UI *ui, const System *destination) const
+void MissionAction::Do(PlayerInfo &player, UI *ui, const System *destination, const shared_ptr<Ship> &ship) const
 {
 	bool isOffer = (trigger == "offer");
 	if(!conversation.IsEmpty() && ui)
 	{
-		ConversationPanel *panel = new ConversationPanel(player, conversation, destination);
+		// Conversations offered while boarding or assisting reference a ship,
+		// which may be destroyed depending on the player's choices.
+		ConversationPanel *panel = new ConversationPanel(player, conversation, destination, ship);
 		if(isOffer)
 			panel->SetCallback(&player, &PlayerInfo::MissionCallback);
 		// Use a basic callback to handle forced departure outside of `on offer`

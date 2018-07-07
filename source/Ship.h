@@ -19,7 +19,6 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Armament.h"
 #include "CargoHold.h"
 #include "Command.h"
-#include "Flotsam.h"
 #include "Outfit.h"
 #include "Personality.h"
 #include "Point.h"
@@ -32,10 +31,12 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 class DataNode;
 class DataWriter;
+class Flotsam;
 class Government;
 class Minable;
 class Phrase;
 class Planet;
+class PlayerInfo;
 class Projectile;
 class StellarObject;
 class System;
@@ -71,6 +72,7 @@ public:
 		static const uint8_t RIGHT = 2;
 		static const uint8_t BACK = 3;
 	};
+	
 	class EnginePoint : public Point {
 	public:
 		EnginePoint(double x, double y, double zoom) : Point(x, y), zoom(zoom) {}
@@ -79,6 +81,7 @@ public:
 	private:
 		double zoom;
 	};
+	
 	
 public:
 	/* Functions provided by the Body base class:
@@ -97,6 +100,10 @@ public:
 	const Government *GetGovernment() const;
 	*/
 
+	Ship() = default;
+	// Construct and Load() at the same time.
+	Ship(const DataNode &node);
+	
 	// Load data for a type of ship:
 	void Load(const DataNode &node);
 	// When loading a ship, some of the outfits it lists may not have been
@@ -115,6 +122,8 @@ public:
 	const std::string &Noun() const;
 	// Get this ship's description.
 	const std::string &Description() const;
+	// Get the shipyard thumbnail for this ship.
+	const Sprite *Thumbnail() const;
 	// Get this ship's cost.
 	int64_t Cost() const;
 	int64_t ChassisCost() const;
@@ -145,7 +154,7 @@ public:
 	// Get a random hail message, or set the object used to generate them. If no
 	// object is given the government's default will be used.
 	void SetHail(const Phrase &phrase);
-	std::string GetHail() const;
+	std::string GetHail(const PlayerInfo &player) const;
 	
 	// Set the commands for this ship to follow this timestep.
 	void SetCommands(const Command &command);
@@ -230,10 +239,12 @@ public:
 	// Get characteristics of this ship, as a fraction between 0 and 1.
 	double Shields() const;
 	double Hull() const;
-	double Energy() const;
-	double Heat() const;
 	double Fuel() const;
-	// Get the ship's "health," where 0 is disabled and 1 means full health.
+	double Energy() const;
+	// A ship's heat is generally between 0 and 1, but if it receives
+	// heat damage the value can increase above 1.
+	double Heat() const;
+	// Get the ship's "health," where <=0 is disabled and 1 means full health.
 	double Health() const;
 	// Get the number of jumps this ship can make before running out of fuel.
 	// This depends on how much fuel it has and what sort of hyperdrive it uses.
@@ -387,8 +398,10 @@ private:
 	std::string pluralModelName;
 	std::string noun;
 	std::string description;
+	const Sprite *thumbnail = nullptr;
 	// Characteristics of this particular ship:
 	std::string name;
+	bool canBeCarried = false;
 	
 	int forget = 0;
 	bool isInSystem = true;
@@ -467,6 +480,22 @@ private:
 	double hyperspaceFuelCost = 0.;
 	Point hyperspaceOffset;
 	
+	// The hull may spring a "leak" (venting atmosphere, flames, blood, etc.)
+	// when the ship is dying.
+	class Leak {
+	public:
+		Leak(const Effect *effect = nullptr) : effect(effect) {}
+		
+		const Effect *effect = nullptr;
+		Point location;
+		Angle angle;
+		int openPeriod = 60;
+		int closePeriod = 60;
+	};
+	std::vector<Leak> leaks;
+	std::vector<Leak> activeLeaks;
+	
+	// Explosions that happen when the ship is dying:
 	std::map<const Effect *, int> explosionEffects;
 	unsigned explosionRate = 0;
 	unsigned explosionCount = 0;
