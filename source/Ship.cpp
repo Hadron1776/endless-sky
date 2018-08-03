@@ -82,7 +82,6 @@ namespace {
 }
 
 
-
 // Construct and Load() at the same time.
 Ship::Ship(const DataNode &node)
 {
