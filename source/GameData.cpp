@@ -126,7 +126,7 @@ namespace {
 
 
 
-void GameData::BeginLoad(const char * const *argv)
+bool GameData::BeginLoad(const char * const *argv)
 {
 	bool printShips = false;
 	bool printWeapons = false;
@@ -209,6 +209,7 @@ void GameData::BeginLoad(const char * const *argv)
 		PrintShipTable();
 	if(printWeapons)
 		PrintWeaponTable();
+	return !(printShips || printWeapons);
 }
 
 
@@ -216,6 +217,7 @@ void GameData::BeginLoad(const char * const *argv)
 // Check for objects that are referred to but never defined.
 void GameData::CheckReferences()
 {
+	
 	set<string> knownOutfitCategories(categories["outfit"].begin(), categories["outfit"].end());
 	set<string> knownShipCategories(categories["ship"].begin(), categories["ship"].end());
 	for(const string &carried : {"Fighter", "Drone"})
@@ -778,7 +780,6 @@ const string &GameData::Rating(const string &type, int level)
 
 
 
-// Get player-defined categories for outfits and ships.
 const vector<string> &GameData::Categories(const string &type)
 {
 	return categories[type];
